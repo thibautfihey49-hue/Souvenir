@@ -131,9 +131,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void appliquerTheme() {
         if (modeSombre) {
-            setTheme(android.R.style.Theme_Material_NoActionBar);
+            setTheme(R.style.Theme_Messages_Dark);
         } else {
-            setTheme(android.R.style.Theme_Material_Light_NoActionBar);
+            setTheme(R.style.Theme_Messages);
         }
     }
 

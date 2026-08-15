@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Messages" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">#1B66F5</item>
+        <item name="colorPrimaryDark">#1557E0</item>
+        <item name="colorAccent">#1B66F5</item>
+        <item name="android:windowBackground">#FAFAFA</item>
+    </style>
+    
+    <style name="Theme.Messages.Dark" parent="Theme.AppCompat.NoActionBar">
+        <item name="colorPrimary">#1B66F5</item>
+        <item name="colorPrimaryDark">#1557E0</item>
+        <item name="colorAccent">#1B66F5</item>
+        <item name="android:windowBackground">#121212</item>
+        <item name="android:textColorPrimary">#FFFFFF</item>
+    </style>
+</resources>
