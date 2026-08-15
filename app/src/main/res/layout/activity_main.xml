@@ -5,6 +5,7 @@
     android:fillViewport="true"
     android:background="#FAFAFA">
 
+    <!-- ✅ UN SEUL ENFANT DIRECT : LinearLayout principal -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -56,12 +57,65 @@
                 android:layout_marginHorizontal="8dp"/>
         </LinearLayout>
 
-        <!-- 📱 ESPACE RÉSERVÉ : Contacts ajoutés -->
+        <!-- 📞 ESPACE CRÉER UN CONTACT -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📞 Créer un Contact"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#202124"
+            android:paddingLeft="16dp"
+            android:paddingTop="20dp"
+            android:paddingRight="16dp"
+            android:paddingBottom="8dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:layout_marginHorizontal="16dp"
+            android:background="#FFFFFF"
+            android:elevation="1dp"
+            android:layout_marginBottom="8dp">
+
+            <EditText
+                android:id="@+id/nouveau_contact_nom"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Nom du contact"
+                android:inputType="textPersonName"
+                android:padding="12dp"
+                android:background="@drawable/saisie_fond"
+                android:layout_marginBottom="8dp"/>
+
+            <EditText
+                android:id="@+id/nouveau_contact_numero"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Numéro de téléphone"
+                android:inputType="phone"
+                android:padding="12dp"
+                android:background="@drawable/saisie_fond"
+                android:layout_marginBottom="12dp"/>
+
+            <Button
+                android:id="@+id/btn_enregistrer_contact"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="💾 Enregistrer et démarrer la conversation"
+                android:backgroundTint="#1B66F5"
+                android:textColor="#FFFFFF"
+                android:padding="12dp"/>
+        </LinearLayout>
+
+        <!-- 👤 MES CONTACTS -->
         <TextView
             android:id="@+id/titre_contacts"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="📞 Mes Contacts"
+            android:text="👤 Mes Contacts"
             android:textSize="16sp"
             android:textStyle="bold"
             android:textColor="#202124"
@@ -82,25 +136,19 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="👤"
-                android:textSize="32sp"/>
+                android:text="Aucun contact enregistré"
+                android:textSize="14sp"
+                android:textColor="#80868B"/>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Aucun contact ajouté"
-                android:textSize="15sp"
-                android:textColor="#5F6368"
-                android:layout_marginTop="8dp"/>
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Appuyez sur 📞 pour ajouter un contact"
+                android:text="→ Utilisez le formulaire ci-dessus"
                 android:textSize="13sp"
                 android:textColor="#80868B"
                 android:layout_marginTop="4dp"/>
         </LinearLayout>
 
-        <!-- 💬 ESPACE RÉSERVÉ : Conversations -->
+        <!-- 💬 CONVERSATIONS -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -108,8 +156,8 @@
             android:textSize="16sp"
             android:textStyle="bold"
             android:textColor="#202124"
-            android:paddingLeft="24dp"
-            android:paddingTop="16dp"
+            android:paddingLeft="16dp"
+            android:paddingTop="24dp"
             android:paddingRight="16dp"
             android:paddingBottom="8dp"/>
 
@@ -136,7 +184,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Ajoutez un contact puis envoyez un message"
+                android:text="Créez un contact puis envoyez un message"
                 android:textSize="13sp"
                 android:textColor="#80868B"
                 android:layout_marginTop="4dp"/>
@@ -146,42 +194,12 @@
             android:id="@+id/list_conversations"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="120dp"
+            android:layout_marginBottom="40dp"
             android:divider="#E8EAED"
             android:dividerHeight="1dp"
             android:paddingTop="4dp"/>
 
     </LinearLayout>
-
-    <!-- Boutons flottants en bas à droite -->
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="24dp"
-        android:orientation="vertical"
-        android:gravity="center"
-        android:spacing="16dp">
-
-        <ImageButton
-            android:id="@+id/btn_nouveau_contact"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-            android:src="@android:drawable/ic_menu_add"
-            android:background="@drawable/fab_background_secondaire"
-            android:tint="#FFFFFF"
-            android:elevation="4dp"
-            android:contentDescription="Nouveau contact"/>
-
-        <ImageButton
-            android:id="@+id/btn_ajouter"
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:src="@android:drawable/ic_input_add"
-            android:background="@drawable/fab_background"
-            android:tint="#FFFFFF"
-            android:elevation="6dp"
-            android:contentDescription="Nouvelle conversation"/>
-    </LinearLayout>
+    <!-- ✅ FIN DU SEUL ENFANT DU ScrollView -->
 
 </ScrollView>
