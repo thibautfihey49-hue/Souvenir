@@ -1,9 +1,13 @@
 package com.souvenir.messages;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextUtils;
@@ -15,6 +19,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
@@ -22,6 +27,8 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
@@ -45,12 +52,14 @@ public class MainActivity extends AppCompatActivity {
     private List<Conversation> conversationsVisibles = new ArrayList<>();
     private List<Conversation> conversationsFiltrees = new ArrayList<>();
     private List<ContactConfig> tousContacts = new ArrayList<>();
-    private ImageButton btnAjouter, btnNouveauContact;
     private TextView badgeCache, titreContacts;
-    private EditText champRecherche;
+    private EditText champRecherche, champNouveauNom, champNouveauNumero;
+    private Button btnEnregistrerContact;
     private int compteurClicBadge = 0;
     private long dernierClicBadge = 0;
     private static final int SEUIL_CLIC_BADGE = 3;
+    private static final int PERMISSION_APPEL = 1002;
+    private String numeroAppelEnAttente;
     private boolean modeSombre = false;
 
     @Override
@@ -64,10 +73,11 @@ public class MainActivity extends AppCompatActivity {
         listeVide = findViewById(R.id.liste_vide);
         listeContactsVide = findViewById(R.id.liste_contacts_vide);
         titreContacts = findViewById(R.id.titre_contacts);
-        btnAjouter = findViewById(R.id.btn_ajouter);
-        btnNouveauContact = findViewById(R.id.btn_nouveau_contact);
         badgeCache = findViewById(R.id.badge_cache);
         champRecherche = findViewById(R.id.champ_recherche);
+        champNouveauNom = findViewById(R.id.nouveau_contact_nom);
+        champNouveauNumero = findViewById(R.id.nouveau_contact_numero);
+        btnEnregistrerContact = findViewById(R.id.btn_enregistrer_contact);
 
         chargerConversations();
         chargerContacts();
@@ -76,7 +86,7 @@ public class MainActivity extends AppCompatActivity {
         listView.setAdapter(adapter);
         mettreAJourAffichage();
 
-        // ✅ CLIC SUR CONVERSATION = RÉPONDRE
+        // ✅ CLIC SUR CONVERSATION = CONTINUER LA DISCUSSION
         listView.setOnItemClickListener((parent, view, position, id) -> {
             Conversation conv = conversationsFiltrees.get(position);
             Intent intent = new Intent(MainActivity.this, ConversationActivity.class);
@@ -87,19 +97,30 @@ public class MainActivity extends AppCompatActivity {
             adapter.notifyDataSetChanged();
         });
 
+        // ✅ APPUI LONG = Menu : Appeler / Supprimer / Masquer
         listView.setOnItemLongClickListener((parent, view, position, id) -> {
             Conversation conv = conversationsFiltrees.get(position);
             afficherMenuActions(conv);
             return true;
         });
 
-        // 📞 Bouton créer contact
-        btnNouveauContact.setOnClickListener(v -> afficherDialogNouveauContact());
+        // ✅ ENREGISTRER CONTACT depuis le formulaire dédié
+        btnEnregistrerContact.setOnClickListener(v -> {
+            String nom = champNouveauNom.getText().toString().trim();
+            String num = champNouveauNumero.getText().toString().trim().replaceAll("\\s+", "").replaceAll("^\\+33", "0");
 
-        // 💬 Bouton nouvelle conversation
-        btnAjouter.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, ConversationActivity.class);
-            startActivity(intent);
+            if (TextUtils.isEmpty(nom)) {
+                Toast.makeText(this, "Nom requis", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (TextUtils.isEmpty(num)) {
+                Toast.makeText(this, "Numéro requis", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            sauvegarderContact(nom, num, false, false);
+            champNouveauNom.setText("");
+            champNouveauNumero.setText("");
         });
 
         badgeCache.setOnClickListener(v -> {
@@ -129,90 +150,130 @@ public class MainActivity extends AppCompatActivity {
         });
 
         mettreAJourBadgeCache();
+        demanderPermissions();
     }
 
-    // 📞 Charger la liste des contacts
-    private void chargerContacts() {
+    // ✅ Sauvegarder contact et ouvrir conversation
+    private void sauvegarderContact(String nom, String num, boolean intercepter, boolean cacher) {
         SharedPreferences prefs = getSharedPreferences(PREFS_CONTACTS, MODE_PRIVATE);
         Gson gson = new Gson();
+        List<ContactConfig> liste = new ArrayList<>();
         String json = prefs.getString("liste", "[]");
-        tousContacts.clear();
         try {
             Type type = new TypeToken<List<ContactConfig>>(){}.getType();
-            tousContacts = gson.fromJson(json, type);
-        } catch (Exception e) { Log.e(TAG, "Erreur contacts: " + e.getMessage()); }
-        if (tousContacts == null) tousContacts = new ArrayList<>();
+            liste = gson.fromJson(json, type);
+        } catch (Exception e) {}
+        if (liste == null) liste = new ArrayList<>();
+
+        boolean existe = false;
+        for (ContactConfig c : liste) {
+            if (c.numero.equals(num)) {
+                c.nom = nom;
+                c.intercepterSms = intercepter;
+                c.estCache = cacher;
+                existe = true;
+                break;
+            }
+        }
+        if (!existe) {
+            ContactConfig nc = new ContactConfig();
+            nc.nom = nom;
+            nc.numero = num;
+            nc.intercepterSms = intercepter;
+            nc.estCache = cacher;
+            liste.add(nc);
+        }
+        prefs.edit().putString("liste", gson.toJson(liste)).apply();
+        Toast.makeText(this, existe ? "Contact modifié ✅" : "Contact ajouté ✅", Toast.LENGTH_SHORT).show();
+
+        chargerContacts();
+        mettreAJourAffichage();
+
+        // ✅ OUVRIR LA CONVERSATION DIRECTEMENT
+        Intent intent = new Intent(MainActivity.this, ConversationActivity.class);
+        intent.putExtra("numero", num);
+        intent.putExtra("nom", nom);
+        startActivity(intent);
     }
 
-    // 📞 Créer un contact directement depuis l'accueil
-    private void afficherDialogNouveauContact() {
-        View form = LayoutInflater.from(this).inflate(R.layout.dialog_ajouter_contact, null);
-        final EditText champNom = form.findViewById(R.id.champ_nom);
-        final EditText champNumero = form.findViewById(R.id.champ_numero);
-        final android.widget.ToggleButton btnIntercepter = form.findViewById(R.id.btn_intercepter);
-        final android.widget.ToggleButton btnCacher = form.findViewById(R.id.btn_cacher);
-
-        champNumero.setHint("06.. ou +33..");
-
+    // ✅ MENU ACTIONS : Appeler / Épingler / Supprimer / Masquer
+    private void afficherMenuActions(Conversation conv) {
+        String[] options = {"📞 Appeler", "📌 Épingler/Désépingler", "🗑️ Supprimer", "👁️ Masquer"};
         new AlertDialog.Builder(this)
-            .setTitle("Ajouter un Contact")
-            .setView(form)
-            .setPositiveButton("Enregistrer", (dialog, which) -> {
-                String nom = champNom.getText().toString().trim();
-                String num = champNumero.getText().toString().trim().replaceAll("\\s+", "").replaceAll("^\\+33", "0");
-                boolean intercepter = btnIntercepter.isChecked();
-                boolean cacher = btnCacher.isChecked();
-
-                if (TextUtils.isEmpty(nom)) {
-                    Toast.makeText(this, "Nom requis", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                if (TextUtils.isEmpty(num)) {
-                    Toast.makeText(this, "Numéro requis", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                SharedPreferences prefs = getSharedPreferences(PREFS_CONTACTS, MODE_PRIVATE);
-                Gson gson = new Gson();
-                List<ContactConfig> liste = new ArrayList<>();
-                String json = prefs.getString("liste", "[]");
-                try {
-                    Type type = new TypeToken<List<ContactConfig>>(){}.getType();
-                    liste = gson.fromJson(json, type);
-                } catch (Exception e) {}
-                if (liste == null) liste = new ArrayList<>();
-
-                boolean existe = false;
-                for (ContactConfig c : liste) {
-                    if (c.numero.equals(num)) {
-                        c.nom = nom;
-                        c.intercepterSms = intercepter;
-                        c.estCache = cacher;
-                        existe = true;
-                        break;
+            .setTitle("Actions : " + conv.nom)
+            .setItems(options, (d, which) -> {
+                if (which == 0) {
+                    // 📞 APPEL TÉLÉPHONIQUE
+                    numeroAppelEnAttente = conv.numero;
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE)
+                            == PackageManager.PERMISSION_GRANTED) {
+                        lancerAppel(conv.numero);
+                    } else {
+                        ActivityCompat.requestPermissions(this,
+                                new String[]{Manifest.permission.CALL_PHONE}, PERMISSION_APPEL);
                     }
+                } else if (which == 1) {
+                    conv.epingle = !Boolean.TRUE.equals(conv.epingle);
+                    sauvegarderConversations();
+                    adapter.notifyDataSetChanged();
+                } else if (which == 2) {
+                    toutesConversations.remove(conv);
+                    sauvegarderConversations();
+                    filtrerConversations(champRecherche.getText().toString());
+                } else if (which == 3) {
+                    conv.estCache = true;
+                    sauvegarderConversations();
+                    filtrerConversations(champRecherche.getText().toString());
                 }
-                if (!existe) {
-                    ContactConfig nc = new ContactConfig();
-                    nc.nom = nom;
-                    nc.numero = num;
-                    nc.intercepterSms = intercepter;
-                    nc.estCache = cacher;
-                    liste.add(nc);
-                }
-                prefs.edit().putString("liste", gson.toJson(liste)).apply();
-                Toast.makeText(this, existe ? "Contact modifié ✅" : "Contact ajouté ✅", Toast.LENGTH_SHORT).show();
-                
-                // Rafraîchir et ouvrir la conversation
-                chargerContacts();
-                mettreAJourAffichage();
-                Intent intent = new Intent(MainActivity.this, ConversationActivity.class);
-                intent.putExtra("numero", num);
-                intent.putExtra("nom", nom);
-                startActivity(intent);
             })
-            .setNegativeButton("Annuler", null)
             .show();
+    }
+
+    // ✅ Lancer l'appel
+    private void lancerAppel(String numero) {
+        Intent intent = new Intent(Intent.ACTION_CALL);
+        intent.setData(Uri.parse("tel:" + numero));
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE)
+                == PackageManager.PERMISSION_GRANTED) {
+            startActivity(intent);
+        }
+    }
+
+    // ✅ Gérer la réponse de permission
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_APPEL && grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            lancerAppel(numeroAppelEnAttente);
+        } else {
+            Toast.makeText(this, "Permission appel refusée", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void demanderPermissions() {
+        List<String> perms = new ArrayList<>();
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS)
+                != PackageManager.PERMISSION_GRANTED) {
+            perms.add(Manifest.permission.READ_SMS);
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS)
+                != PackageManager.PERMISSION_GRANTED) {
+            perms.add(Manifest.permission.RECEIVE_SMS);
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS)
+                != PackageManager.PERMISSION_GRANTED) {
+            perms.add(Manifest.permission.SEND_SMS);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                perms.add(Manifest.permission.POST_NOTIFICATIONS);
+            }
+        }
+        if (!perms.isEmpty()) {
+            ActivityCompat.requestPermissions(this, perms.toArray(new String[0]), 1001);
+        }
     }
 
     @Override
@@ -280,6 +341,18 @@ public class MainActivity extends AppCompatActivity {
         for (Conversation c : toutesConversations) if (!c.estCache) conversationsVisibles.add(c);
     }
 
+    private void chargerContacts() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_CONTACTS, MODE_PRIVATE);
+        Gson gson = new Gson();
+        String json = prefs.getString("liste", "[]");
+        tousContacts.clear();
+        try {
+            Type type = new TypeToken<List<ContactConfig>>(){}.getType();
+            tousContacts = gson.fromJson(json, type);
+        } catch (Exception e) { Log.e(TAG, "Erreur contacts: " + e.getMessage()); }
+        if (tousContacts == null) tousContacts = new ArrayList<>();
+    }
+
     private void filtrerConversations(String recherche) {
         recherche = recherche.toLowerCase().trim();
         conversationsFiltrees.clear();
@@ -296,9 +369,7 @@ public class MainActivity extends AppCompatActivity {
         mettreAJourAffichage();
     }
 
-    // ✅ Mettre à jour tout l'affichage : conversations + contacts
     private void mettreAJourAffichage() {
-        // Liste des conversations
         if (conversationsFiltrees.isEmpty()) {
             listView.setVisibility(View.GONE);
             listeVide.setVisibility(View.VISIBLE);
@@ -307,7 +378,6 @@ public class MainActivity extends AppCompatActivity {
             listeVide.setVisibility(View.GONE);
         }
 
-        // Liste des contacts créés
         if (tousContacts.isEmpty()) {
             listeContactsVide.setVisibility(View.VISIBLE);
             titreContacts.setVisibility(View.GONE);
@@ -315,28 +385,6 @@ public class MainActivity extends AppCompatActivity {
             listeContactsVide.setVisibility(View.GONE);
             titreContacts.setVisibility(View.VISIBLE);
         }
-    }
-
-    private void afficherMenuActions(Conversation conv) {
-        String[] options = {"Épingler/Désépingler", "Supprimer", "Masquer"};
-        new AlertDialog.Builder(this)
-            .setTitle("Actions")
-            .setItems(options, (d, which) -> {
-                if (which == 0) {
-                    conv.epingle = !Boolean.TRUE.equals(conv.epingle);
-                    sauvegarderConversations();
-                    adapter.notifyDataSetChanged();
-                } else if (which == 1) {
-                    toutesConversations.remove(conv);
-                    sauvegarderConversations();
-                    filtrerConversations(champRecherche.getText().toString());
-                } else if (which == 2) {
-                    conv.estCache = true;
-                    sauvegarderConversations();
-                    filtrerConversations(champRecherche.getText().toString());
-                }
-            })
-            .show();
     }
 
     private void sauvegarderConversations() {
@@ -390,7 +438,7 @@ public class MainActivity extends AppCompatActivity {
 
             avatar.setText(conv.nom.substring(0, 1).toUpperCase());
             nom.setText(conv.nom);
-            message.setText(conv.dernierMessage.isEmpty() ? "Appuyez pour répondre" : conv.dernierMessage);
+            message.setText(conv.dernierMessage.isEmpty() ? "💬 Appuyez pour continuer la discussion" : conv.dernierMessage);
             SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.FRANCE);
             heure.setText(sdf.format(new Date(conv.horodatage)));
 
