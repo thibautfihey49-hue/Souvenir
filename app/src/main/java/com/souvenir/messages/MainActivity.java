@@ -1,6 +1,7 @@
 package com.souvenir.messages;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -15,6 +16,7 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
@@ -51,10 +53,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        
         chargerParametres();
         appliquerTheme();
+        setContentView(R.layout.activity_main);
         
         listView = findViewById(R.id.list_conversations);
         listeVide = findViewById(R.id.liste_vide);
@@ -66,6 +67,7 @@ public class MainActivity extends AppCompatActivity {
         conversationsFiltrees.addAll(conversationsVisibles);
         adapter = new ConversationAdapter();
         listView.setAdapter(adapter);
+        mettreAJourListeVide();
 
         listView.setOnItemClickListener((parent, view, position, id) -> {
             Conversation conv = conversationsFiltrees.get(position);
@@ -75,7 +77,6 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
             conv.nonLu = 0;
             adapter.notifyDataSetChanged();
-        listeVide.setVisibility(conversationsFiltrees.isEmpty() ? View.VISIBLE : View.GONE);
         });
 
         listView.setOnItemLongClickListener((parent, view, position, id) -> {
@@ -124,7 +125,7 @@ public class MainActivity extends AppCompatActivity {
         chargerConversations();
         filtrerConversations(champRecherche.getText().toString());
         adapter.notifyDataSetChanged();
-        listeVide.setVisibility(conversationsFiltrees.isEmpty() ? View.VISIBLE : View.GONE);
+        mettreAJourListeVide();
         mettreAJourBadgeCache();
     }
 
@@ -195,19 +196,28 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         adapter.notifyDataSetChanged();
-        listeVide.setVisibility(conversationsFiltrees.isEmpty() ? View.VISIBLE : View.GONE);
+        mettreAJourListeVide();
+    }
+
+    private void mettreAJourListeVide() {
+        if (conversationsFiltrees.isEmpty()) {
+            listView.setVisibility(View.GONE);
+            listeVide.setVisibility(View.VISIBLE);
+        } else {
+            listView.setVisibility(View.VISIBLE);
+            listeVide.setVisibility(View.GONE);
+        }
     }
 
     private void afficherMenuActions(Conversation conv) {
         String[] options = {"Épingler/Désépingler", "Supprimer", "Masquer"};
-        new android.app.AlertDialog.Builder(this)
+        new AlertDialog.Builder(this)
             .setTitle("Actions")
             .setItems(options, (d, which) -> {
                 if (which == 0) {
                     conv.epingle = !Boolean.TRUE.equals(conv.epingle);
                     sauvegarderConversations();
                     adapter.notifyDataSetChanged();
-        listeVide.setVisibility(conversationsFiltrees.isEmpty() ? View.VISIBLE : View.GONE);
                 } else if (which == 1) {
                     toutesConversations.remove(conv);
                     sauvegarderConversations();
