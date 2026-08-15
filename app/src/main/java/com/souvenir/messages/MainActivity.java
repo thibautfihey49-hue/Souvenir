@@ -39,13 +39,14 @@ public class MainActivity extends AppCompatActivity {
     private static final String PREFS_PARAMS = "Parametres";
     
     private ListView listView;
-    private LinearLayout listeVide;
+    private LinearLayout listeVide, listeContactsVide;
     private ConversationAdapter adapter;
     private List<Conversation> toutesConversations = new ArrayList<>();
     private List<Conversation> conversationsVisibles = new ArrayList<>();
     private List<Conversation> conversationsFiltrees = new ArrayList<>();
+    private List<ContactConfig> tousContacts = new ArrayList<>();
     private ImageButton btnAjouter, btnNouveauContact;
-    private TextView badgeCache;
+    private TextView badgeCache, titreContacts;
     private EditText champRecherche;
     private int compteurClicBadge = 0;
     private long dernierClicBadge = 0;
@@ -61,17 +62,21 @@ public class MainActivity extends AppCompatActivity {
         
         listView = findViewById(R.id.list_conversations);
         listeVide = findViewById(R.id.liste_vide);
+        listeContactsVide = findViewById(R.id.liste_contacts_vide);
+        titreContacts = findViewById(R.id.titre_contacts);
         btnAjouter = findViewById(R.id.btn_ajouter);
         btnNouveauContact = findViewById(R.id.btn_nouveau_contact);
         badgeCache = findViewById(R.id.badge_cache);
         champRecherche = findViewById(R.id.champ_recherche);
 
         chargerConversations();
+        chargerContacts();
         conversationsFiltrees.addAll(conversationsVisibles);
         adapter = new ConversationAdapter();
         listView.setAdapter(adapter);
-        mettreAJourListeVide();
+        mettreAJourAffichage();
 
+        // ✅ CLIC SUR CONVERSATION = RÉPONDRE
         listView.setOnItemClickListener((parent, view, position, id) -> {
             Conversation conv = conversationsFiltrees.get(position);
             Intent intent = new Intent(MainActivity.this, ConversationActivity.class);
@@ -88,7 +93,7 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
 
-        // 📞 NOUVEAU : Bouton créer contact directement
+        // 📞 Bouton créer contact
         btnNouveauContact.setOnClickListener(v -> afficherDialogNouveauContact());
 
         // 💬 Bouton nouvelle conversation
@@ -126,6 +131,19 @@ public class MainActivity extends AppCompatActivity {
         mettreAJourBadgeCache();
     }
 
+    // 📞 Charger la liste des contacts
+    private void chargerContacts() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_CONTACTS, MODE_PRIVATE);
+        Gson gson = new Gson();
+        String json = prefs.getString("liste", "[]");
+        tousContacts.clear();
+        try {
+            Type type = new TypeToken<List<ContactConfig>>(){}.getType();
+            tousContacts = gson.fromJson(json, type);
+        } catch (Exception e) { Log.e(TAG, "Erreur contacts: " + e.getMessage()); }
+        if (tousContacts == null) tousContacts = new ArrayList<>();
+    }
+
     // 📞 Créer un contact directement depuis l'accueil
     private void afficherDialogNouveauContact() {
         View form = LayoutInflater.from(this).inflate(R.layout.dialog_ajouter_contact, null);
@@ -137,7 +155,7 @@ public class MainActivity extends AppCompatActivity {
         champNumero.setHint("06.. ou +33..");
 
         new AlertDialog.Builder(this)
-            .setTitle("Nouveau Contact")
+            .setTitle("Ajouter un Contact")
             .setView(form)
             .setPositiveButton("Enregistrer", (dialog, which) -> {
                 String nom = champNom.getText().toString().trim();
@@ -185,7 +203,9 @@ public class MainActivity extends AppCompatActivity {
                 prefs.edit().putString("liste", gson.toJson(liste)).apply();
                 Toast.makeText(this, existe ? "Contact modifié ✅" : "Contact ajouté ✅", Toast.LENGTH_SHORT).show();
                 
-                // Ouvre directement la conversation avec ce contact
+                // Rafraîchir et ouvrir la conversation
+                chargerContacts();
+                mettreAJourAffichage();
                 Intent intent = new Intent(MainActivity.this, ConversationActivity.class);
                 intent.putExtra("numero", num);
                 intent.putExtra("nom", nom);
@@ -199,9 +219,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         chargerConversations();
+        chargerContacts();
         filtrerConversations(champRecherche.getText().toString());
         adapter.notifyDataSetChanged();
-        mettreAJourListeVide();
+        mettreAJourAffichage();
         mettreAJourBadgeCache();
     }
 
@@ -272,16 +293,27 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         adapter.notifyDataSetChanged();
-        mettreAJourListeVide();
+        mettreAJourAffichage();
     }
 
-    private void mettreAJourListeVide() {
+    // ✅ Mettre à jour tout l'affichage : conversations + contacts
+    private void mettreAJourAffichage() {
+        // Liste des conversations
         if (conversationsFiltrees.isEmpty()) {
             listView.setVisibility(View.GONE);
             listeVide.setVisibility(View.VISIBLE);
         } else {
             listView.setVisibility(View.VISIBLE);
             listeVide.setVisibility(View.GONE);
+        }
+
+        // Liste des contacts créés
+        if (tousContacts.isEmpty()) {
+            listeContactsVide.setVisibility(View.VISIBLE);
+            titreContacts.setVisibility(View.GONE);
+        } else {
+            listeContactsVide.setVisibility(View.GONE);
+            titreContacts.setVisibility(View.VISIBLE);
         }
     }
 
@@ -358,7 +390,7 @@ public class MainActivity extends AppCompatActivity {
 
             avatar.setText(conv.nom.substring(0, 1).toUpperCase());
             nom.setText(conv.nom);
-            message.setText(conv.dernierMessage);
+            message.setText(conv.dernierMessage.isEmpty() ? "Appuyez pour répondre" : conv.dernierMessage);
             SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.FRANCE);
             heure.setText(sdf.format(new Date(conv.horodatage)));
 

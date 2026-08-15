@@ -1,105 +1,162 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fillViewport="true"
     android:background="#FAFAFA">
 
     <LinearLayout
-        android:id="@+id/barre_haut"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="8dp"
-        android:background="#FFFFFF"
-        android:elevation="2dp">
-        
+        android:orientation="vertical">
+
+        <!-- Barre supérieure -->
         <LinearLayout
+            android:id="@+id/barre_haut"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
+            android:orientation="vertical"
             android:padding="8dp"
-            android:gravity="center_vertical">
-            <TextView
-                android:layout_width="0dp"
+            android:background="#FFFFFF"
+            android:elevation="2dp">
+            
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Messages"
-                android:textSize="22sp"
-                android:textStyle="bold"
-                android:textColor="#202124"/>
-            <TextView
-                android:id="@+id/badge_cache"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:text="0"
-                android:textSize="12sp"
-                android:textColor="#FFFFFF"
-                android:gravity="center"
-                android:background="@drawable/badge_cercle"
-                android:visibility="gone"/>
+                android:orientation="horizontal"
+                android:padding="8dp"
+                android:gravity="center_vertical">
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Messages"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:textColor="#202124"/>
+                <TextView
+                    android:id="@+id/badge_cache"
+                    android:layout_width="28dp"
+                    android:layout_height="28dp"
+                    android:text="0"
+                    android:textSize="12sp"
+                    android:textColor="#FFFFFF"
+                    android:gravity="center"
+                    android:background="@drawable/badge_cercle"
+                    android:visibility="gone"/>
+            </LinearLayout>
+
+            <EditText
+                android:id="@+id/champ_recherche"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Rechercher des conversations ou contacts"
+                android:background="@drawable/saisie_fond"
+                android:padding="10dp"
+                android:layout_marginHorizontal="8dp"/>
         </LinearLayout>
 
-        <EditText
-            android:id="@+id/champ_recherche"
+        <!-- 📱 ESPACE RÉSERVÉ : Contacts ajoutés -->
+        <TextView
+            android:id="@+id/titre_contacts"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Rechercher des conversations"
-            android:background="@drawable/saisie_fond"
-            android:padding="10dp"
-            android:layout_marginHorizontal="8dp"/>
+            android:text="📞 Mes Contacts"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#202124"
+            android:padding="16dp 16dp 8dp 16dp"
+            android:visibility="gone"/>
+
+        <LinearLayout
+            android:id="@+id/liste_contacts_vide"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="20dp"
+            android:gravity="center"
+            android:visibility="visible">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="👤"
+                android:textSize="32sp"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Aucun contact ajouté"
+                android:textSize="15sp"
+                android:textColor="#5F6368"
+                android:layout_marginTop="8dp"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Appuyez sur 📞 pour ajouter un contact"
+                android:textSize="13sp"
+                android:textColor="#80868B"
+                android:layout_marginTop="4dp"/>
+        </LinearLayout>
+
+        <!-- 💬 ESPACE RÉSERVÉ : Conversations -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="💬 Conversations"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#202124"
+            android:padding="24dp 16dp 8dp 16dp"/>
+
+        <LinearLayout
+            android:id="@+id/liste_vide"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="40dp"
+            android:gravity="center"
+            android:visibility="visible">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="💬"
+                android:textSize="40sp"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Aucune conversation"
+                android:textSize="16sp"
+                android:textColor="#5F6368"
+                android:layout_marginTop="12dp"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Ajoutez un contact puis envoyez un message"
+                android:textSize="13sp"
+                android:textColor="#80868B"
+                android:layout_marginTop="4dp"/>
+        </LinearLayout>
+
+        <ListView
+            android:id="@+id/list_conversations"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="120dp"
+            android:divider="#E8EAED"
+            android:dividerHeight="1dp"
+            android:paddingTop="4dp"/>
+
     </LinearLayout>
 
-    <ListView
-        android:id="@+id/list_conversations"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_below="@id/barre_haut"
-        android:divider="#E8EAED"
-        android:dividerHeight="1dp"
-        android:paddingTop="8dp"/>
-
-    <LinearLayout
-        android:id="@+id/liste_vide"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_below="@id/barre_haut"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:padding="40dp"
-        android:visibility="gone">
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="💬"
-            android:textSize="48sp"/>
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Aucune conversation"
-            android:textSize="18sp"
-            android:textColor="#5F6368"
-            android:layout_marginTop="16dp"/>
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Appuyez sur + pour commencer"
-            android:textSize="14sp"
-            android:textColor="#80868B"
-            android:layout_marginTop="8dp"/>
-    </LinearLayout>
-
-    <!-- Boutons en bas à droite -->
+    <!-- Boutons flottants en bas à droite -->
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentEnd="true"
+        android:layout_gravity="bottom|end"
         android:layout_margin="24dp"
         android:orientation="vertical"
         android:gravity="center"
         android:spacing="16dp">
 
-        <!-- Bouton Nouveau Contact -->
         <ImageButton
             android:id="@+id/btn_nouveau_contact"
             android:layout_width="50dp"
@@ -107,9 +164,9 @@
             android:src="@android:drawable/ic_menu_add"
             android:background="@drawable/fab_background_secondaire"
             android:tint="#FFFFFF"
-            android:elevation="4dp"/>
+            android:elevation="4dp"
+            android:contentDescription="Nouveau contact"/>
 
-        <!-- Bouton Nouvelle Conversation -->
         <ImageButton
             android:id="@+id/btn_ajouter"
             android:layout_width="56dp"
@@ -117,6 +174,8 @@
             android:src="@android:drawable/ic_input_add"
             android:background="@drawable/fab_background"
             android:tint="#FFFFFF"
-            android:elevation="6dp"/>
+            android:elevation="6dp"
+            android:contentDescription="Nouvelle conversation"/>
     </LinearLayout>
-</RelativeLayout>
+
+</ScrollView>
