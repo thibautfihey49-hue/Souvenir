@@ -35,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String PREFS_PARAMS = "Parametres";
     
     private ListView listView;
+    private LinearLayout listeVide;
     private ConversationAdapter adapter;
     private List<Conversation> toutesConversations = new ArrayList<>();
     private List<Conversation> conversationsVisibles = new ArrayList<>();
@@ -56,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
         appliquerTheme();
         
         listView = findViewById(R.id.list_conversations);
+        listeVide = findViewById(R.id.liste_vide);
         btnAjouter = findViewById(R.id.btn_ajouter);
         badgeCache = findViewById(R.id.badge_cache);
         champRecherche = findViewById(R.id.champ_recherche);
@@ -73,6 +75,7 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
             conv.nonLu = 0;
             adapter.notifyDataSetChanged();
+        listeVide.setVisibility(conversationsFiltrees.isEmpty() ? View.VISIBLE : View.GONE);
         });
 
         listView.setOnItemLongClickListener((parent, view, position, id) -> {
@@ -121,6 +124,7 @@ public class MainActivity extends AppCompatActivity {
         chargerConversations();
         filtrerConversations(champRecherche.getText().toString());
         adapter.notifyDataSetChanged();
+        listeVide.setVisibility(conversationsFiltrees.isEmpty() ? View.VISIBLE : View.GONE);
         mettreAJourBadgeCache();
     }
 
@@ -191,6 +195,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         adapter.notifyDataSetChanged();
+        listeVide.setVisibility(conversationsFiltrees.isEmpty() ? View.VISIBLE : View.GONE);
     }
 
     private void afficherMenuActions(Conversation conv) {
@@ -202,6 +207,7 @@ public class MainActivity extends AppCompatActivity {
                     conv.epingle = !Boolean.TRUE.equals(conv.epingle);
                     sauvegarderConversations();
                     adapter.notifyDataSetChanged();
+        listeVide.setVisibility(conversationsFiltrees.isEmpty() ? View.VISIBLE : View.GONE);
                 } else if (which == 1) {
                     toutesConversations.remove(conv);
                     sauvegarderConversations();

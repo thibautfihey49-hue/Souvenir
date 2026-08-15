@@ -73,6 +73,7 @@ public class ConversationActivity extends Activity {
                 return;
             }
             if (TextUtils.isEmpty(numero)) {
+            Toast.makeText(this, "Entrez un numéro puis envoyez un message", Toast.LENGTH_SHORT).show();
                 Toast.makeText(this, "Ajoutez d'abord un contact", Toast.LENGTH_SHORT).show();
                 return;
             }
