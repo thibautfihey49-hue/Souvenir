@@ -65,7 +65,10 @@
             android:textSize="16sp"
             android:textStyle="bold"
             android:textColor="#202124"
-            android:padding="16dp 16dp 8dp 16dp"
+            android:paddingLeft="16dp"
+            android:paddingTop="16dp"
+            android:paddingRight="16dp"
+            android:paddingBottom="8dp"
             android:visibility="gone"/>
 
         <LinearLayout
@@ -105,7 +108,10 @@
             android:textSize="16sp"
             android:textStyle="bold"
             android:textColor="#202124"
-            android:padding="24dp 16dp 8dp 16dp"/>
+            android:paddingLeft="24dp"
+            android:paddingTop="16dp"
+            android:paddingRight="16dp"
+            android:paddingBottom="8dp"/>
 
         <LinearLayout
             android:id="@+id/liste_vide"
