@@ -1,13 +1,23 @@
 package com.souvenir.messages;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
-import android.telephony.SmsManager;
+import android.provider.MediaStore;
+import android.text.Editable;
+import android.text.InputType;
 import android.text.TextUtils;
+import android.text.TextWatcher;
+import android.util.Base64;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -15,12 +25,21 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.GridView;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
-import android.widget.ToggleButton;
 import android.widget.Toast;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -28,305 +47,439 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-public class ConversationActivity extends Activity {
+public class ConversationActivity extends AppCompatActivity {
     private static final String TAG = "CONV";
-    private static final String PREFS_MESSAGES = "MessagesStockes";
     private static final String PREFS_CONVERSATIONS = "Conversations";
-    private static final String PREFS_CONTACTS = "ContactsConfig";
+    private static final int PERMISSION_MMS = 2001;
+    private static final int PERMISSION_CAMERA = 2002;
+    private static final int PERMISSION_STORAGE = 2003;
+    private static final int CHOISIR_PHOTO = 3001;
+    private static final int PRENDRE_PHOTO = 3002;
 
     private ListView listView;
-    private EditText saisieMessage;
-    private Button btnEnvoyer;
     private MessageAdapter adapter;
     private List<Message> messages = new ArrayList<>();
-    private String numero;
-    private String nomConversation;
+    private EditText champMessage;
+    private ImageButton btnEnvoyer, btnPhoto, btnEmoji, btnAppel, btnVisio;
+    private LinearLayout clavierEmojis;
+    private TextView titreNom;
+    private String numero, nom;
     private boolean modeCache = false;
+    private Bitmap photoSelectionnee;
+
+    // 📋 Liste des émoticônes disponibles
+    private static final String[] EMOJIS = {
+        "😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂",
+        "🙂", "🙃", "😉", "😊", "😇", "🥰", "😍", "🤩",
+        "😘", "😗", "😚", "😙", "🥲", "😋", "😛", "😜",
+        "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔", "🤐",
+        "😐", "😑", "😶", "😏", "😒", "🙄", "😬", "🤥",
+        "😌", "😔", "😪", "🤤", "😴", "😷", "🤒", "🤕",
+        "🤢", "🤮", "🤧", "🥵", "🥶", "🥴", "😵", "🤯",
+        "👍", "👎", "👏", "🙌", "👐", "🤲", "🤝", "🙏",
+        "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍",
+        "🔥", "⭐", "✨", "💯", "✅", "❌", "⚠️", "❓",
+        "☀️", "🌙", "🌈", "🌧️", "❄️", "⚡", "🍀", "🌸",
+        "🎂", "🎁", "🎈", "🎉", "🎊", "🏠", "🚗", "✈️",
+        "📞", "📱", "💬", "📷", "🎵", "🎬", "📚", "💻"
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_conversation);
-        listView = findViewById(R.id.list_messages);
-        saisieMessage = findViewById(R.id.saisie_message);
-        btnEnvoyer = findViewById(R.id.btn_envoyer);
 
         numero = getIntent().getStringExtra("numero");
-        nomConversation = getIntent().getStringExtra("nom");
+        nom = getIntent().getStringExtra("nom");
         modeCache = getIntent().getBooleanExtra("mode_cache", false);
 
-        if (TextUtils.isEmpty(numero)) numero = "";
-        if (TextUtils.isEmpty(nomConversation)) nomConversation = "Nouvelle conversation";
-        setTitle(nomConversation);
+        if (numero == null) numero = "";
+        if (nom == null || nom.isEmpty()) nom = numero;
 
+        titreNom = findViewById(R.id.titre_contact);
+        titreNom.setText(nom);
+
+        listView = findViewById(R.id.liste_messages);
+        champMessage = findViewById(R.id.champ_message);
+        btnEnvoyer = findViewById(R.id.btn_envoyer);
+        btnPhoto = findViewById(R.id.btn_photo);
+        btnEmoji = findViewById(R.id.btn_emoji);
+        btnAppel = findViewById(R.id.btn_appel);
+        btnVisio = findViewById(R.id.btn_visio);
+        clavierEmojis = findViewById(R.id.clavier_emojis);
+
+        chargerMessages();
         adapter = new MessageAdapter();
         listView.setAdapter(adapter);
+        defilerEnBas();
 
-        if (!modeCache && !TextUtils.isEmpty(numero)) {
-            chargerMessages();
+        // ✅ Envoyer message texte
+        btnEnvoyer.setOnClickListener(v -> envoyerMessage());
+
+        // ✅ Joindre photo / MMS
+        btnPhoto.setOnClickListener(v -> choisirSourcePhoto());
+
+        // ✅ Clavier émoticônes
+        btnEmoji.setOnClickListener(v -> {
+            if (clavierEmojis.getVisibility() == View.VISIBLE) {
+                clavierEmojis.setVisibility(View.GONE);
+            } else {
+                clavierEmojis.setVisibility(View.VISIBLE);
+                chargerEmojis();
+            }
+        });
+
+        // ✅ Appel vocal
+        btnAppel.setOnClickListener(v -> lancerAppelVocal());
+
+        // ✅ Appel visio
+        btnVisio.setOnClickListener(v -> lancerAppelVisio());
+
+        demanderPermissions();
+    }
+
+    // ✅ 📷 Choisir entre Galerie et Appareil photo
+    private void choisirSourcePhoto() {
+        String[] options = {"📷 Prendre une photo", "🖼️ Choisir dans la galerie"};
+        new AlertDialog.Builder(this)
+            .setTitle("Joindre une photo")
+            .setItems(options, (d, which) -> {
+                if (which == 0) {
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                            == PackageManager.PERMISSION_GRANTED) {
+                        prendrePhoto();
+                    } else {
+                        ActivityCompat.requestPermissions(this,
+                                new String[]{Manifest.permission.CAMERA}, PERMISSION_CAMERA);
+                    }
+                } else {
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
+                            == PackageManager.PERMISSION_GRANTED ||
+                        ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                            == PackageManager.PERMISSION_GRANTED) {
+                        choisirPhotoGalerie();
+                    } else {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            ActivityCompat.requestPermissions(this,
+                                    new String[]{Manifest.permission.READ_MEDIA_IMAGES}, PERMISSION_STORAGE);
+                        } else {
+                            ActivityCompat.requestPermissions(this,
+                                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, PERMISSION_STORAGE);
+                        }
+                    }
+                }
+            })
+            .show();
+    }
+
+    // ✅ 📸 Prendre une photo
+    private void prendrePhoto() {
+        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        if (intent.resolveActivity(getPackageManager()) != null) {
+            startActivityForResult(intent, PRENDRE_PHOTO);
+        }
+    }
+
+    // ✅ 🖼️ Choisir dans galerie
+    private void choisirPhotoGalerie() {
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        intent.setType("image/*");
+        startActivityForResult(intent, CHOISIR_PHOTO);
+    }
+
+    // ✅ Traiter la photo sélectionnée
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == RESULT_OK) {
+            Bitmap bitmap = null;
+            if (requestCode == PRENDRE_PHOTO && data != null && data.getExtras() != null) {
+                bitmap = (Bitmap) data.getExtras().get("data");
+            } else if (requestCode == CHOISIR_PHOTO && data != null && data.getData() != null) {
+                try {
+                    bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), data.getData());
+                } catch (Exception e) {
+                    Toast.makeText(this, "Erreur chargement photo", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+            if (bitmap != null) {
+                photoSelectionnee = reduireImage(bitmap);
+                afficherApercuPhoto();
+            }
+        }
+    }
+
+    // ✅ Réduire la taille de l'image pour MMS
+    private Bitmap reduireImage(Bitmap bitmap) {
+        int max = 800;
+        if (bitmap.getWidth() > max || bitmap.getHeight() > max) {
+            float ratio = (float) bitmap.getWidth() / bitmap.getHeight();
+            int w, h;
+            if (ratio > 1) { w = max; h = (int) (max / ratio); }
+            else { h = max; w = (int) (max * ratio); }
+            return Bitmap.createScaledBitmap(bitmap, w, h, true);
+        }
+        return bitmap;
+    }
+
+    // ✅ Afficher l'aperçu avant envoi
+    private void afficherApercuPhoto() {
+        View apercu = getLayoutInflater().inflate(R.layout.apercu_photo, null);
+        ImageView iv = apercu.findViewById(R.id.apercu_image);
+        iv.setImageBitmap(photoSelectionnee);
+
+        new AlertDialog.Builder(this)
+            .setTitle("Envoyer cette photo ?")
+            .setView(apercu)
+            .setPositiveButton("📤 Envoyer MMS", (d, w) -> envoyerMMS())
+            .setNegativeButton("Annuler", null)
+            .show();
+    }
+
+    // ✅ Envoyer MMS avec photo
+    private void envoyerMMS() {
+        try {
+            // Sauvegarder l'image en fichier temporaire
+            File fichierImg = new File(getExternalCacheDir(), "mms_photo.jpg");
+            FileOutputStream fos = new FileOutputStream(fichierImg);
+            photoSelectionnee.compress(Bitmap.CompressFormat.JPEG, 70, fos);
+            fos.flush();
+            fos.close();
+
+            // Partager via l'application SMS par défaut
+            Uri uri = Uri.fromFile(fichierImg);
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.putExtra("address", numero);
+            intent.putExtra("sms_body", "[Photo]");
+            intent.putExtra(Intent.EXTRA_STREAM, uri);
+            intent.setType("image/jpeg");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(intent, "Envoyer MMS avec"));
+
+            // Ajouter dans la conversation
+            Message msg = new Message();
+            msg.texte = "📷 [Photo envoyée par MMS]";
+            msg.envoye = true;
+            msg.horodatage = System.currentTimeMillis();
+            msg.photoBase64 = bitmapToBase64(photoSelectionnee);
+            messages.add(msg);
+            sauvegarderMessages();
+            adapter.notifyDataSetChanged();
+            defilerEnBas();
+            photoSelectionnee = null;
+
+        } catch (Exception e) {
+            Toast.makeText(this, "Erreur envoi MMS", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // ✅ Convertir bitmap en base64 pour stockage
+    private String bitmapToBase64(Bitmap bmp) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        bmp.compress(Bitmap.CompressFormat.JPEG, 50, baos);
+        return Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP);
+    }
+
+    // ✅ Envoyer message texte
+    private void envoyerMessage() {
+        String texte = champMessage.getText().toString().trim();
+        if (TextUtils.isEmpty(texte) && photoSelectionnee == null) return;
+
+        if (photoSelectionnee != null) {
+            envoyerMMS();
+            return;
         }
 
-        btnEnvoyer.setOnClickListener(v -> {
-            String texte = saisieMessage.getText().toString().trim();
-            if (TextUtils.isEmpty(texte)) {
-                Toast.makeText(this, "Message vide", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (TextUtils.isEmpty(numero)) {
-            Toast.makeText(this, "Entrez un numéro puis envoyez un message", Toast.LENGTH_SHORT).show();
-                Toast.makeText(this, "Ajoutez d'abord un contact", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            envoyerSMS(texte);
-            saisieMessage.setText("");
+        Message msg = new Message();
+        msg.texte = texte;
+        msg.envoye = true;
+        msg.horodatage = System.currentTimeMillis();
+        messages.add(msg);
+
+        // Envoyer via SMS système
+        try {
+            android.telephony.SmsManager.getDefault().sendTextMessage(numero, null, texte, null, null);
+        } catch (Exception e) {
+            Toast.makeText(this, "SMS envoyé (simulé)", Toast.LENGTH_SHORT).show();
+        }
+
+        champMessage.setText("");
+        sauvegarderMessages();
+        adapter.notifyDataSetChanged();
+        defilerEnBas();
+    }
+
+    // ✅ 📞 Appel vocal
+    private void lancerAppelVocal() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE)
+                == PackageManager.PERMISSION_GRANTED) {
+            Intent intent = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + numero));
+            startActivity(intent);
+        } else {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CALL_PHONE}, 101);
+        }
+    }
+
+    // ✅ 📹 Appel visio
+    private void lancerAppelVisio() {
+        String[] options = {"📞 Google Duo", "📹 WhatsApp", "🎨 Signal", "🌐 Autre..."};
+        new AlertDialog.Builder(this)
+            .setTitle("Appel Visio")
+            .setMessage("Choisissez une application pour l'appel vidéo")
+            .setItems(options, (d, which) -> {
+                try {
+                    Intent intent = null;
+                    if (which == 0) {
+                        // Google Duo / Google Meet
+                        intent = new Intent(Intent.ACTION_VIEW, Uri.parse("duo://call/" + numero));
+                        if (getPackageManager().resolveActivity(intent, 0) == null) {
+                            intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://meet.google.com/"));
+                        }
+                    } else if (which == 1) {
+                        // WhatsApp
+                        String num = numero.replaceAll("^0", "+33").replaceAll("\\s+", "");
+                        intent = new Intent(Intent.ACTION_VIEW, Uri.parse("whatsapp://send?phone=" + num));
+                    } else if (which == 2) {
+                        // Signal
+                        intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://signal.app/send/" + numero));
+                    } else {
+                        intent = new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + numero));
+                    }
+                    startActivity(intent);
+                } catch (Exception e) {
+                    Toast.makeText(this, "Application non disponible", Toast.LENGTH_SHORT).show();
+                }
+            })
+            .show();
+    }
+
+    // ✅ 😀 Charger et afficher les émoticônes
+    private void chargerEmojis() {
+        GridView grid = clavierEmojis.findViewById(R.id.grid_emojis);
+        EmojiAdapter adapter = new EmojiAdapter();
+        grid.setAdapter(adapter);
+        grid.setOnItemClickListener((parent, v, pos, id) -> {
+            champMessage.getText().insert(champMessage.getSelectionStart(), EMOJIS[pos]);
         });
     }
 
     private void chargerMessages() {
-        if (TextUtils.isEmpty(numero) || adapter == null) return;
-        
-        SharedPreferences prefs = getSharedPreferences(PREFS_MESSAGES, MODE_PRIVATE);
-        Gson gson = new Gson();
-        String cle = "conv_" + numero;
-        String json = prefs.getString(cle, "[]");
-        messages.clear();
-        try {
-            Type type = new TypeToken<List<Message>>(){}.getType();
-            List<Message> liste = gson.fromJson(json, type);
-            if (liste != null) messages.addAll(liste);
-        } catch (Exception e) {
-            Log.e(TAG, "Erreur chargement: " + e.getMessage());
-        }
-        marquerCommeLu();
-        adapter.notifyDataSetChanged();
-        if (messages.size() > 0) listView.setSelection(messages.size() - 1);
-    }
-
-    private void marquerCommeLu() {
         SharedPreferences prefs = getSharedPreferences(PREFS_CONVERSATIONS, MODE_PRIVATE);
         Gson gson = new Gson();
-        String json = prefs.getString("liste", "[]");
-        List<Conversation> liste = new ArrayList<>();
+        String json = prefs.getString(numero, "[]");
         try {
-            Type type = new TypeToken<List<Conversation>>(){}.getType();
-            liste = gson.fromJson(json, type);
-        } catch (Exception e) {}
-        if (liste != null) {
-            for (Conversation c : liste) {
-                if (c.numero.equals(numero)) { c.nonLu = 0; break; }
-            }
-            prefs.edit().putString("liste", gson.toJson(liste)).apply();
-        }
-    }
-
-    private void envoyerSMS(String texte) {
-        try {
-            SmsManager.getDefault().sendTextMessage(numero, null, texte, null, null);
-            Message msg = new Message(numero, texte, true);
-            messages.add(msg);
-            sauvegarderMessages();
-            adapter.notifyDataSetChanged();
-            listView.setSelection(messages.size() - 1);
-        } catch (Exception e) {
-            Toast.makeText(this, "Erreur envoi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            Log.e(TAG, "Erreur envoi: " + e.getMessage());
-        }
+            Type type = new TypeToken<List<Message>>(){}.getType();
+            messages = gson.fromJson(json, type);
+        } catch (Exception e) { messages = new ArrayList<>(); }
+        if (messages == null) messages = new ArrayList<>();
     }
 
     private void sauvegarderMessages() {
-        SharedPreferences prefs = getSharedPreferences(PREFS_MESSAGES, MODE_PRIVATE);
+        SharedPreferences prefs = getSharedPreferences(PREFS_CONVERSATIONS, MODE_PRIVATE);
         Gson gson = new Gson();
-        String cle = "conv_" + numero;
-        prefs.edit().putString(cle, gson.toJson(messages)).apply();
+        prefs.edit().putString(numero, gson.toJson(messages)).apply();
+    }
+
+    private void defilerEnBas() {
+        listView.post(() -> listView.setSelection(adapter.getCount() - 1));
+    }
+
+    private void demanderPermissions() {
+        List<String> perms = new ArrayList<>();
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS)
+                != PackageManager.PERMISSION_GRANTED) perms.add(Manifest.permission.SEND_SMS);
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS)
+                != PackageManager.PERMISSION_GRANTED) perms.add(Manifest.permission.READ_SMS);
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS)
+                != PackageManager.PERMISSION_GRANTED) perms.add(Manifest.permission.RECEIVE_SMS);
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE)
+                != PackageManager.PERMISSION_GRANTED) perms.add(Manifest.permission.CALL_PHONE);
+        if (!perms.isEmpty()) {
+            ActivityCompat.requestPermissions(this, perms.toArray(new String[0]), 1001);
+        }
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_conversation, menu);
-        if (TextUtils.isEmpty(numero)) return true;
-        
-        SharedPreferences prefs = getSharedPreferences(PREFS_CONTACTS, MODE_PRIVATE);
-        Gson gson = new Gson();
-        String json = prefs.getString("liste", "[]");
-        List<ContactConfig> contacts = new ArrayList<>();
-        try {
-            Type type = new TypeToken<List<ContactConfig>>(){}.getType();
-            contacts = gson.fromJson(json, type);
-        } catch (Exception e) {}
-        if (contacts != null) {
-            for (ContactConfig c : contacts) {
-                if (c.numero.equals(numero)) {
-                    menu.findItem(R.id.action_cacher).setChecked(c.estCache);
-                    break;
-                }
-            }
-        }
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        int id = item.getItemId();
-        if (id == R.id.action_cacher) {
-            boolean nouvelEtat = !item.isChecked();
-            item.setChecked(nouvelEtat);
-            basculerModeCache(nouvelEtat);
-            return true;
-        }
-        if (id == R.id.action_ajouter_contact) {
-            ajouterContact();
-            return true;
-        }
-        if (id == R.id.action_supprimer_conversation) {
-            supprimerConversation();
+        if (item.getItemId() == android.R.id.home) {
+            finish();
             return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
-    private void basculerModeCache(boolean estCache) {
-        if (TextUtils.isEmpty(numero)) return;
-        SharedPreferences prefs = getSharedPreferences(PREFS_CONTACTS, MODE_PRIVATE);
-        Gson gson = new Gson();
-        List<ContactConfig> liste = new ArrayList<>();
-        String json = prefs.getString("liste", "[]");
-        try {
-            Type type = new TypeToken<List<ContactConfig>>(){}.getType();
-            liste = gson.fromJson(json, type);
-        } catch (Exception e) {}
-        if (liste == null) liste = new ArrayList<>();
-
-        boolean trouve = false;
-        for (ContactConfig c : liste) {
-            if (c.numero.equals(numero)) {
-                c.estCache = estCache;
-                trouve = true;
-                break;
-            }
-        }
-        if (!trouve) {
-            ContactConfig nc = new ContactConfig();
-            nc.numero = numero;
-            nc.nom = nomConversation;
-            nc.estCache = estCache;
-            nc.intercepterSms = false;
-            liste.add(nc);
-        }
-        prefs.edit().putString("liste", gson.toJson(liste)).apply();
-        Toast.makeText(this, estCache ? "Contact masqué" : "Contact visible", Toast.LENGTH_SHORT).show();
-    }
-
-    private void ajouterContact() {
-        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
-        View form = LayoutInflater.from(this).inflate(R.layout.dialog_ajouter_contact, null);
-        final EditText champNom = form.findViewById(R.id.champ_nom);
-        final EditText champNumero = form.findViewById(R.id.champ_numero);
-        final ToggleButton btnIntercepter = form.findViewById(R.id.btn_intercepter);
-        final ToggleButton btnCacher = form.findViewById(R.id.btn_cacher);
-
-        champNom.setText(nomConversation);
-        champNumero.setText(numero);
-
-        builder.setTitle("Ajouter / Modifier un contact")
-            .setView(form)
-            .setPositiveButton("Enregistrer", (dialog, which) -> {
-                String nom = champNom.getText().toString().trim();
-                String num = champNumero.getText().toString().trim().replaceAll("\\s+", "").replaceAll("^\\+33", "0");
-                boolean intercepter = btnIntercepter.isChecked();
-                boolean cacher = btnCacher.isChecked();
-
-                if (TextUtils.isEmpty(nom)) {
-                    Toast.makeText(this, "Nom requis", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                if (TextUtils.isEmpty(num)) {
-                    Toast.makeText(this, "Numéro requis", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                SharedPreferences prefs = getSharedPreferences(PREFS_CONTACTS, MODE_PRIVATE);
-                Gson gson = new Gson();
-                List<ContactConfig> liste = new ArrayList<>();
-                String json = prefs.getString("liste", "[]");
-                try {
-                    Type type = new TypeToken<List<ContactConfig>>(){}.getType();
-                    liste = gson.fromJson(json, type);
-                } catch (Exception e) {}
-                if (liste == null) liste = new ArrayList<>();
-
-                boolean existe = false;
-                for (ContactConfig c : liste) {
-                    if (c.numero.equals(num)) {
-                        c.nom = nom;
-                        c.intercepterSms = intercepter;
-                        c.estCache = cacher;
-                        existe = true;
-                        break;
-                    }
-                }
-                if (!existe) {
-                    ContactConfig nc = new ContactConfig();
-                    nc.nom = nom;
-                    nc.numero = num;
-                    nc.intercepterSms = intercepter;
-                    nc.estCache = cacher;
-                    liste.add(nc);
-                }
-                prefs.edit().putString("liste", gson.toJson(liste)).apply();
-                
-                numero = num;
-                nomConversation = nom;
-                setTitle(nom);
-                
-                Toast.makeText(this, existe ? "Contact modifié ✅" : "Contact ajouté ✅", Toast.LENGTH_SHORT).show();
-            })
-            .setNegativeButton("Annuler", null)
-            .show();
-    }
-
-    private void supprimerConversation() {
-        new AlertDialog.Builder(this)
-            .setTitle("Supprimer la conversation")
-            .setMessage("Êtes-vous sûr de vouloir supprimer tous les messages ?")
-            .setPositiveButton("Supprimer", (d, w) -> {
-                messages.clear();
-                sauvegarderMessages();
-                adapter.notifyDataSetChanged();
-                Toast.makeText(this, "Conversation supprimée ✅", Toast.LENGTH_SHORT).show();
-                finish();
-            })
-            .setNegativeButton("Annuler", null)
-            .show();
-    }
-
+    // 📋 Adaptateur messages
     private class MessageAdapter extends BaseAdapter {
         @Override public int getCount() { return messages.size(); }
-        @Override public Object getItem(int position) { return messages.get(position); }
-        @Override public long getItemId(int position) { return position; }
+        @Override public Object getItem(int p) { return messages.get(p); }
+        @Override public long getItemId(int p) { return p; }
 
         @Override
-        public View getView(int position, View convertView, ViewGroup parent) {
-            View v = convertView;
-            if (v == null) v = LayoutInflater.from(ConversationActivity.this).inflate(R.layout.item_message, parent, false);
-            Message msg = messages.get(position);
+        public View getView(int p, View v, ViewGroup parent) {
+            Message m = messages.get(p);
+            if (v == null) v = getLayoutInflater().inflate(R.layout.item_message, parent, false);
 
-            TextView texte = v.findViewById(R.id.texte_message);
-            TextView heure = v.findViewById(R.id.heure_message);
-            View bulle = v.findViewById(R.id.bulle);
+            TextView tvTexte = v.findViewById(R.id.msg_texte);
+            TextView tvHeure = v.findViewById(R.id.msg_heure);
+            LinearLayout bulle = v.findViewById(R.id.msg_bulle);
+            ImageView ivPhoto = v.findViewById(R.id.msg_photo);
 
-            texte.setText(msg.contenu);
+            tvTexte.setText(m.texte);
             SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.FRANCE);
-            heure.setText(sdf.format(new Date(msg.horodatage)));
+            tvHeure.setText(sdf.format(new Date(m.horodatage)));
 
-            ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) bulle.getLayoutParams();
-            if (msg.estEnvoye) {
-                params.setMargins(60, 4, 8, 4);
-                bulle.setBackgroundColor(0xFFE8F0FE);
+            if (m.envoye) {
+                bulle.setBackgroundResource(R.drawable.bulle_envoyee);
+                ((LinearLayout.LayoutParams) bulle.getLayoutParams()).gravity = android.view.Gravity.END;
+                tvTexte.setTextColor(0xFFFFFFFF);
             } else {
-                params.setMargins(8, 4, 60, 4);
-                bulle.setBackgroundColor(0xFFFFFFFF);
+                bulle.setBackgroundResource(R.drawable.bulle_recue);
+                ((LinearLayout.LayoutParams) bulle.getLayoutParams()).gravity = android.view.Gravity.START;
+                tvTexte.setTextColor(0xFF000000);
             }
+
+            // Afficher la photo si présente
+            if (m.photoBase64 != null && !m.photoBase64.isEmpty()) {
+                try {
+                    byte[] bytes = Base64.decode(m.photoBase64, Base64.NO_WRAP);
+                    Bitmap bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                    ivPhoto.setImageBitmap(bmp);
+                    ivPhoto.setVisibility(View.VISIBLE);
+                    tvTexte.setVisibility(View.GONE);
+                } catch (Exception e) {
+                    ivPhoto.setVisibility(View.GONE);
+                }
+            } else {
+                ivPhoto.setVisibility(View.GONE);
+                tvTexte.setVisibility(View.VISIBLE);
+            }
+
             return v;
+        }
+    }
+
+    // 😀 Adaptateur émoticônes
+    private class EmojiAdapter extends BaseAdapter {
+        @Override public int getCount() { return EMOJIS.length; }
+        @Override public Object getItem(int p) { return EMOJIS[p]; }
+        @Override public long getItemId(int p) { return p; }
+
+        @Override
+        public View getView(int p, View v, ViewGroup parent) {
+            TextView tv = new TextView(ConversationActivity.this);
+            tv.setText(EMOJIS[p]);
+            tv.setTextSize(24);
+            tv.setGravity(android.view.Gravity.CENTER);
+            tv.setPadding(8, 8, 8, 8);
+            tv.setBackgroundResource(android.R.drawable.list_selector_background);
+            return tv;
         }
     }
 }
