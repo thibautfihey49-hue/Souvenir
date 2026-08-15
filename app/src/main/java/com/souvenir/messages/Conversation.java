@@ -6,6 +6,7 @@ public class Conversation {
     public long horodatage;
     public int nonLu;
     public boolean estCache;
+    public Boolean epingle;
     public Conversation(String numero, String nom) {
         this.numero = numero;
         this.nom = nom;
@@ -13,5 +14,6 @@ public class Conversation {
         this.horodatage = System.currentTimeMillis();
         this.nonLu = 0;
         this.estCache = false;
+        this.epingle = false;
     }
 }

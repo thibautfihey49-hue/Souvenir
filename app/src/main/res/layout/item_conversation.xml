@@ -39,10 +39,17 @@
                 android:maxLines="1"
                 android:ellipsize="end"/>
             <TextView
+                android:id="@+id/icone_epingle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📌"
+                android:textSize="12sp"
+                android:layout_marginEnd="4dp"
+                android:visibility="gone"/>
+            <TextView
                 android:id="@+id/heure"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
                 android:textSize="12sp"
                 android:textColor="#5F6368"/>
         </LinearLayout>

@@ -2,7 +2,7 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/action_ajouter_contact"
-        android:title="Ajouter un contact"
+        android:title="Ajouter/Modifier contact"
         android:icon="@android:drawable/ic_menu_add"
         android:showAsAction="ifRoom"/>
     <item
@@ -11,4 +11,7 @@
         android:checkable="true"
         android:icon="@android:drawable/ic_menu_edit"
         android:showAsAction="ifRoom"/>
+    <item
+        android:id="@+id/action_supprimer_conversation"
+        android:title="Supprimer la conversation"/>
 </menu>

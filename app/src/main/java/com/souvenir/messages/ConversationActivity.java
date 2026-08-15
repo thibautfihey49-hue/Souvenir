@@ -1,6 +1,7 @@
 package com.souvenir.messages;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.telephony.SmsManager;
@@ -17,6 +18,7 @@ import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.ToggleButton;
+import android.widget.Toast;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
@@ -57,18 +59,23 @@ public class ConversationActivity extends Activity {
         if (TextUtils.isEmpty(nomConversation)) nomConversation = "Nouvelle conversation";
         setTitle(nomConversation);
 
-        // ✅ CRÉER L'ADAPTER D'ABORD — avant chargerMessages()
         adapter = new MessageAdapter();
         listView.setAdapter(adapter);
 
-        // ✅ Charger les messages SEULEMENT si pas en mode caché
         if (!modeCache && !TextUtils.isEmpty(numero)) {
             chargerMessages();
         }
 
         btnEnvoyer.setOnClickListener(v -> {
             String texte = saisieMessage.getText().toString().trim();
-            if (TextUtils.isEmpty(texte) || TextUtils.isEmpty(numero)) return;
+            if (TextUtils.isEmpty(texte)) {
+                Toast.makeText(this, "Message vide", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (TextUtils.isEmpty(numero)) {
+                Toast.makeText(this, "Ajoutez d'abord un contact", Toast.LENGTH_SHORT).show();
+                return;
+            }
             envoyerSMS(texte);
             saisieMessage.setText("");
         });
@@ -87,13 +94,11 @@ public class ConversationActivity extends Activity {
             List<Message> liste = gson.fromJson(json, type);
             if (liste != null) messages.addAll(liste);
         } catch (Exception e) {
-            Log.e(TAG, "Erreur chargement messages: " + e.getMessage());
+            Log.e(TAG, "Erreur chargement: " + e.getMessage());
         }
         marquerCommeLu();
         adapter.notifyDataSetChanged();
-        if (messages.size() > 0) {
-            listView.setSelection(messages.size() - 1);
-        }
+        if (messages.size() > 0) listView.setSelection(messages.size() - 1);
     }
 
     private void marquerCommeLu() {
@@ -121,7 +126,10 @@ public class ConversationActivity extends Activity {
             sauvegarderMessages();
             adapter.notifyDataSetChanged();
             listView.setSelection(messages.size() - 1);
-        } catch (Exception e) { Log.e(TAG, "Erreur envoi: " + e.getMessage()); }
+        } catch (Exception e) {
+            Toast.makeText(this, "Erreur envoi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "Erreur envoi: " + e.getMessage());
+        }
     }
 
     private void sauvegarderMessages() {
@@ -168,6 +176,10 @@ public class ConversationActivity extends Activity {
             ajouterContact();
             return true;
         }
+        if (id == R.id.action_supprimer_conversation) {
+            supprimerConversation();
+            return true;
+        }
         return super.onOptionsItemSelected(item);
     }
 
@@ -200,6 +212,7 @@ public class ConversationActivity extends Activity {
             liste.add(nc);
         }
         prefs.edit().putString("liste", gson.toJson(liste)).apply();
+        Toast.makeText(this, estCache ? "Contact masqué" : "Contact visible", Toast.LENGTH_SHORT).show();
     }
 
     private void ajouterContact() {
@@ -213,14 +226,22 @@ public class ConversationActivity extends Activity {
         champNom.setText(nomConversation);
         champNumero.setText(numero);
 
-        builder.setTitle("Ajouter un contact")
+        builder.setTitle("Ajouter / Modifier un contact")
             .setView(form)
             .setPositiveButton("Enregistrer", (dialog, which) -> {
                 String nom = champNom.getText().toString().trim();
                 String num = champNumero.getText().toString().trim().replaceAll("\\s+", "").replaceAll("^\\+33", "0");
                 boolean intercepter = btnIntercepter.isChecked();
                 boolean cacher = btnCacher.isChecked();
-                if (TextUtils.isEmpty(nom) || TextUtils.isEmpty(num)) return;
+
+                if (TextUtils.isEmpty(nom)) {
+                    Toast.makeText(this, "Nom requis", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (TextUtils.isEmpty(num)) {
+                    Toast.makeText(this, "Numéro requis", Toast.LENGTH_SHORT).show();
+                    return;
+                }
 
                 SharedPreferences prefs = getSharedPreferences(PREFS_CONTACTS, MODE_PRIVATE);
                 Gson gson = new Gson();
@@ -251,9 +272,27 @@ public class ConversationActivity extends Activity {
                     liste.add(nc);
                 }
                 prefs.edit().putString("liste", gson.toJson(liste)).apply();
+                
                 numero = num;
                 nomConversation = nom;
                 setTitle(nom);
+                
+                Toast.makeText(this, existe ? "Contact modifié ✅" : "Contact ajouté ✅", Toast.LENGTH_SHORT).show();
+            })
+            .setNegativeButton("Annuler", null)
+            .show();
+    }
+
+    private void supprimerConversation() {
+        new AlertDialog.Builder(this)
+            .setTitle("Supprimer la conversation")
+            .setMessage("Êtes-vous sûr de vouloir supprimer tous les messages ?")
+            .setPositiveButton("Supprimer", (d, w) -> {
+                messages.clear();
+                sauvegarderMessages();
+                adapter.notifyDataSetChanged();
+                Toast.makeText(this, "Conversation supprimée ✅", Toast.LENGTH_SHORT).show();
+                finish();
             })
             .setNegativeButton("Annuler", null)
             .show();
