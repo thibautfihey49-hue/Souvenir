@@ -9,6 +9,6 @@
         android:id="@+id/action_cacher"
         android:title="Masquer le contact"
         android:checkable="true"
-        android:icon="@android:drawable/ic_menu_secure"
+        android:icon="@android:drawable/ic_menu_edit"
         android:showAsAction="ifRoom"/>
 </menu>
