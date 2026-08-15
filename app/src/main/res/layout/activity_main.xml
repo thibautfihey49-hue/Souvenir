@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FAFAFA">
+
+    <LinearLayout
+        android:id="@+id/barre_haut"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:gravity="center_vertical"
+        android:background="#FFFFFF"
+        android:elevation="2dp">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Messages"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#202124"/>
+        <TextView
+            android:id="@+id/badge_cache"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:text="0"
+            android:textSize="12sp"
+            android:textColor="#FFFFFF"
+            android:gravity="center"
+            android:background="@drawable/badge_cercle"
+            android:visibility="gone"/>
+    </LinearLayout>
+
+    <ListView
+        android:id="@+id/list_conversations"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/barre_haut"
+        android:divider="#E8EAED"
+        android:dividerHeight="1dp"
+        android:paddingTop="8dp"/>
+
+    <ImageButton
+        android:id="@+id/btn_ajouter"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:layout_margin="24dp"
+        android:src="@android:drawable/ic_input_add"
+        android:background="@drawable/fab_background"
+        android:tint="#FFFFFF"
+        android:elevation="6dp"/>
+</RelativeLayout>

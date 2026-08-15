@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+    <EditText
+        android:id="@+id/champ_nom"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Nom du contact"
+        android:inputType="textPersonName"
+        android:layout_marginBottom="16dp"/>
+    <EditText
+        android:id="@+id/champ_numero"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Numéro de téléphone"
+        android:inputType="phone"
+        android:layout_marginBottom="16dp"/>
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Options :"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp"/>
+    <ToggleButton
+        android:id="@+id/btn_cacher"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textOff="Masquer de la liste"
+        android:textOn="Masqué de la liste"
+        android:layout_marginBottom="8dp"/>
+    <ToggleButton
+        android:id="@+id/btn_intercepter"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textOff="Laisser au système"
+        android:textOn="Intercepter (caché au système)"/>
+</LinearLayout>
