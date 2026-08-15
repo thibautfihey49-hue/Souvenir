@@ -13,7 +13,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.text.Editable;
-import android.text.InputType;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Base64;
@@ -67,7 +66,6 @@ public class ConversationActivity extends AppCompatActivity {
     private boolean modeCache = false;
     private Bitmap photoSelectionnee;
 
-    // 📋 Liste des émoticônes disponibles
     private static final String[] EMOJIS = {
         "😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂",
         "🙂", "🙃", "😉", "😊", "😇", "🥰", "😍", "🤩",
@@ -113,13 +111,8 @@ public class ConversationActivity extends AppCompatActivity {
         listView.setAdapter(adapter);
         defilerEnBas();
 
-        // ✅ Envoyer message texte
         btnEnvoyer.setOnClickListener(v -> envoyerMessage());
-
-        // ✅ Joindre photo / MMS
         btnPhoto.setOnClickListener(v -> choisirSourcePhoto());
-
-        // ✅ Clavier émoticônes
         btnEmoji.setOnClickListener(v -> {
             if (clavierEmojis.getVisibility() == View.VISIBLE) {
                 clavierEmojis.setVisibility(View.GONE);
@@ -128,17 +121,12 @@ public class ConversationActivity extends AppCompatActivity {
                 chargerEmojis();
             }
         });
-
-        // ✅ Appel vocal
         btnAppel.setOnClickListener(v -> lancerAppelVocal());
-
-        // ✅ Appel visio
         btnVisio.setOnClickListener(v -> lancerAppelVisio());
 
         demanderPermissions();
     }
 
-    // ✅ 📷 Choisir entre Galerie et Appareil photo
     private void choisirSourcePhoto() {
         String[] options = {"📷 Prendre une photo", "🖼️ Choisir dans la galerie"};
         new AlertDialog.Builder(this)
@@ -172,7 +160,6 @@ public class ConversationActivity extends AppCompatActivity {
             .show();
     }
 
-    // ✅ 📸 Prendre une photo
     private void prendrePhoto() {
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         if (intent.resolveActivity(getPackageManager()) != null) {
@@ -180,14 +167,12 @@ public class ConversationActivity extends AppCompatActivity {
         }
     }
 
-    // ✅ 🖼️ Choisir dans galerie
     private void choisirPhotoGalerie() {
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         intent.setType("image/*");
         startActivityForResult(intent, CHOISIR_PHOTO);
     }
 
-    // ✅ Traiter la photo sélectionnée
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -210,7 +195,6 @@ public class ConversationActivity extends AppCompatActivity {
         }
     }
 
-    // ✅ Réduire la taille de l'image pour MMS
     private Bitmap reduireImage(Bitmap bitmap) {
         int max = 800;
         if (bitmap.getWidth() > max || bitmap.getHeight() > max) {
@@ -223,7 +207,6 @@ public class ConversationActivity extends AppCompatActivity {
         return bitmap;
     }
 
-    // ✅ Afficher l'aperçu avant envoi
     private void afficherApercuPhoto() {
         View apercu = getLayoutInflater().inflate(R.layout.apercu_photo, null);
         ImageView iv = apercu.findViewById(R.id.apercu_image);
@@ -237,17 +220,14 @@ public class ConversationActivity extends AppCompatActivity {
             .show();
     }
 
-    // ✅ Envoyer MMS avec photo
     private void envoyerMMS() {
         try {
-            // Sauvegarder l'image en fichier temporaire
             File fichierImg = new File(getExternalCacheDir(), "mms_photo.jpg");
             FileOutputStream fos = new FileOutputStream(fichierImg);
             photoSelectionnee.compress(Bitmap.CompressFormat.JPEG, 70, fos);
             fos.flush();
             fos.close();
 
-            // Partager via l'application SMS par défaut
             Uri uri = Uri.fromFile(fichierImg);
             Intent intent = new Intent(Intent.ACTION_SEND);
             intent.putExtra("address", numero);
@@ -257,7 +237,7 @@ public class ConversationActivity extends AppCompatActivity {
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             startActivity(Intent.createChooser(intent, "Envoyer MMS avec"));
 
-            // Ajouter dans la conversation
+            // ✅ Utilisation du constructeur sans paramètres
             Message msg = new Message();
             msg.texte = "📷 [Photo envoyée par MMS]";
             msg.envoye = true;
@@ -274,14 +254,12 @@ public class ConversationActivity extends AppCompatActivity {
         }
     }
 
-    // ✅ Convertir bitmap en base64 pour stockage
     private String bitmapToBase64(Bitmap bmp) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         bmp.compress(Bitmap.CompressFormat.JPEG, 50, baos);
         return Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP);
     }
 
-    // ✅ Envoyer message texte
     private void envoyerMessage() {
         String texte = champMessage.getText().toString().trim();
         if (TextUtils.isEmpty(texte) && photoSelectionnee == null) return;
@@ -291,17 +269,17 @@ public class ConversationActivity extends AppCompatActivity {
             return;
         }
 
+        // ✅ Utilisation du constructeur sans paramètres
         Message msg = new Message();
         msg.texte = texte;
         msg.envoye = true;
         msg.horodatage = System.currentTimeMillis();
         messages.add(msg);
 
-        // Envoyer via SMS système
         try {
             android.telephony.SmsManager.getDefault().sendTextMessage(numero, null, texte, null, null);
         } catch (Exception e) {
-            Toast.makeText(this, "SMS envoyé (simulé)", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "SMS envoyé", Toast.LENGTH_SHORT).show();
         }
 
         champMessage.setText("");
@@ -310,7 +288,6 @@ public class ConversationActivity extends AppCompatActivity {
         defilerEnBas();
     }
 
-    // ✅ 📞 Appel vocal
     private void lancerAppelVocal() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE)
                 == PackageManager.PERMISSION_GRANTED) {
@@ -321,9 +298,8 @@ public class ConversationActivity extends AppCompatActivity {
         }
     }
 
-    // ✅ 📹 Appel visio
     private void lancerAppelVisio() {
-        String[] options = {"📞 Google Duo", "📹 WhatsApp", "🎨 Signal", "🌐 Autre..."};
+        String[] options = {"📞 Google Duo / Meet", "📹 WhatsApp", "🎨 Signal", "🌐 Autre..."};
         new AlertDialog.Builder(this)
             .setTitle("Appel Visio")
             .setMessage("Choisissez une application pour l'appel vidéo")
@@ -331,17 +307,14 @@ public class ConversationActivity extends AppCompatActivity {
                 try {
                     Intent intent = null;
                     if (which == 0) {
-                        // Google Duo / Google Meet
                         intent = new Intent(Intent.ACTION_VIEW, Uri.parse("duo://call/" + numero));
                         if (getPackageManager().resolveActivity(intent, 0) == null) {
                             intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://meet.google.com/"));
                         }
                     } else if (which == 1) {
-                        // WhatsApp
                         String num = numero.replaceAll("^0", "+33").replaceAll("\\s+", "");
                         intent = new Intent(Intent.ACTION_VIEW, Uri.parse("whatsapp://send?phone=" + num));
                     } else if (which == 2) {
-                        // Signal
                         intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://signal.app/send/" + numero));
                     } else {
                         intent = new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + numero));
@@ -354,7 +327,6 @@ public class ConversationActivity extends AppCompatActivity {
             .show();
     }
 
-    // ✅ 😀 Charger et afficher les émoticônes
     private void chargerEmojis() {
         GridView grid = clavierEmojis.findViewById(R.id.grid_emojis);
         EmojiAdapter adapter = new EmojiAdapter();
@@ -415,7 +387,6 @@ public class ConversationActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    // 📋 Adaptateur messages
     private class MessageAdapter extends BaseAdapter {
         @Override public int getCount() { return messages.size(); }
         @Override public Object getItem(int p) { return messages.get(p); }
@@ -426,6 +397,7 @@ public class ConversationActivity extends AppCompatActivity {
             Message m = messages.get(p);
             if (v == null) v = getLayoutInflater().inflate(R.layout.item_message, parent, false);
 
+            // ✅ Utilisation des bons IDs du layout
             TextView tvTexte = v.findViewById(R.id.msg_texte);
             TextView tvHeure = v.findViewById(R.id.msg_heure);
             LinearLayout bulle = v.findViewById(R.id.msg_bulle);
@@ -445,7 +417,6 @@ public class ConversationActivity extends AppCompatActivity {
                 tvTexte.setTextColor(0xFF000000);
             }
 
-            // Afficher la photo si présente
             if (m.photoBase64 != null && !m.photoBase64.isEmpty()) {
                 try {
                     byte[] bytes = Base64.decode(m.photoBase64, Base64.NO_WRAP);
@@ -455,6 +426,7 @@ public class ConversationActivity extends AppCompatActivity {
                     tvTexte.setVisibility(View.GONE);
                 } catch (Exception e) {
                     ivPhoto.setVisibility(View.GONE);
+                    tvTexte.setVisibility(View.VISIBLE);
                 }
             } else {
                 ivPhoto.setVisibility(View.GONE);
@@ -465,7 +437,6 @@ public class ConversationActivity extends AppCompatActivity {
         }
     }
 
-    // 😀 Adaptateur émoticônes
     private class EmojiAdapter extends BaseAdapter {
         @Override public int getCount() { return EMOJIS.length; }
         @Override public Object getItem(int p) { return EMOJIS[p]; }

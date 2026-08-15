@@ -3,33 +3,42 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:paddingVertical="4dp">
+    android:padding="4dp">
+
     <LinearLayout
-        android:id="@+id/bulle"
+        android:id="@+id/msg_bulle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@drawable/bulle_message"
-        android:padding="12dp"
-        android:maxWidth="280dp">
-        <LinearLayout
+        android:layout_margin="4dp"
+        android:maxWidth="280dp"
+        android:orientation="vertical"
+        android:padding="10dp">
+
+        <TextView
+            android:id="@+id/msg_texte"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="15sp"
+            android:lineSpacingExtra="2dp"/>
+
+        <ImageView
+            android:id="@+id/msg_photo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
-            <TextView
-                android:id="@+id/texte_message"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="15sp"
-                android:textColor="#202124"
-                android:lineSpacingExtra="2dp"/>
-            <TextView
-                android:id="@+id/heure_message"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textSize="11sp"
-                android:textColor="#5F6368"
-                android:layout_gravity="end"/>
-        </LinearLayout>
+            android:maxWidth="240dp"
+            android:maxHeight="200dp"
+            android:adjustViewBounds="true"
+            android:scaleType="centerInside"
+            android:visibility="gone"
+            android:layout_marginTop="4dp"/>
+
+        <TextView
+            android:id="@+id/msg_heure"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:textColor="#80868B"
+            android:layout_marginTop="4dp"/>
     </LinearLayout>
+
 </LinearLayout>
