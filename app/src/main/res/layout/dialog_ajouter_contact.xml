@@ -3,39 +3,70 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:padding="16dp"
+    android:gravity="center_horizontal">
+
     <EditText
         android:id="@+id/champ_nom"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Nom du contact"
         android:inputType="textPersonName"
-        android:layout_marginBottom="16dp"/>
+        android:layout_marginBottom="12dp"/>
+
     <EditText
         android:id="@+id/champ_numero"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Numéro de téléphone"
         android:inputType="phone"
-        android:layout_marginBottom="16dp"/>
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Options :"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="8dp"/>
-    <ToggleButton
-        android:id="@+id/btn_cacher"
+        android:layout_marginBottom="12dp"/>
+
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textOff="Masquer de la liste"
-        android:textOn="Masqué de la liste"
-        android:layout_marginBottom="8dp"/>
-    <ToggleButton
-        android:id="@+id/btn_intercepter"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textOff="Laisser au système"
-        android:textOn="Intercepter (caché au système)"/>
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:spacing="16dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <android.widget.ToggleButton
+                android:id="@+id/btn_intercepter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textOff="Non"
+                android:textOn="Oui"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Intercepter SMS"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <android.widget.ToggleButton
+                android:id="@+id/btn_cacher"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textOff="Non"
+                android:textOn="Oui"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Masquer"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp"/>
+        </LinearLayout>
+    </LinearLayout>
 </LinearLayout>

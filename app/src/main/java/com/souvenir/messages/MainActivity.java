@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.Editable;
+import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -19,6 +20,7 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -42,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
     private List<Conversation> toutesConversations = new ArrayList<>();
     private List<Conversation> conversationsVisibles = new ArrayList<>();
     private List<Conversation> conversationsFiltrees = new ArrayList<>();
-    private ImageButton btnAjouter;
+    private ImageButton btnAjouter, btnNouveauContact;
     private TextView badgeCache;
     private EditText champRecherche;
     private int compteurClicBadge = 0;
@@ -60,6 +62,7 @@ public class MainActivity extends AppCompatActivity {
         listView = findViewById(R.id.list_conversations);
         listeVide = findViewById(R.id.liste_vide);
         btnAjouter = findViewById(R.id.btn_ajouter);
+        btnNouveauContact = findViewById(R.id.btn_nouveau_contact);
         badgeCache = findViewById(R.id.badge_cache);
         champRecherche = findViewById(R.id.champ_recherche);
 
@@ -85,6 +88,10 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
 
+        // 📞 NOUVEAU : Bouton créer contact directement
+        btnNouveauContact.setOnClickListener(v -> afficherDialogNouveauContact());
+
+        // 💬 Bouton nouvelle conversation
         btnAjouter.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, ConversationActivity.class);
             startActivity(intent);
@@ -117,6 +124,75 @@ public class MainActivity extends AppCompatActivity {
         });
 
         mettreAJourBadgeCache();
+    }
+
+    // 📞 Créer un contact directement depuis l'accueil
+    private void afficherDialogNouveauContact() {
+        View form = LayoutInflater.from(this).inflate(R.layout.dialog_ajouter_contact, null);
+        final EditText champNom = form.findViewById(R.id.champ_nom);
+        final EditText champNumero = form.findViewById(R.id.champ_numero);
+        final android.widget.ToggleButton btnIntercepter = form.findViewById(R.id.btn_intercepter);
+        final android.widget.ToggleButton btnCacher = form.findViewById(R.id.btn_cacher);
+
+        champNumero.setHint("06.. ou +33..");
+
+        new AlertDialog.Builder(this)
+            .setTitle("Nouveau Contact")
+            .setView(form)
+            .setPositiveButton("Enregistrer", (dialog, which) -> {
+                String nom = champNom.getText().toString().trim();
+                String num = champNumero.getText().toString().trim().replaceAll("\\s+", "").replaceAll("^\\+33", "0");
+                boolean intercepter = btnIntercepter.isChecked();
+                boolean cacher = btnCacher.isChecked();
+
+                if (TextUtils.isEmpty(nom)) {
+                    Toast.makeText(this, "Nom requis", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (TextUtils.isEmpty(num)) {
+                    Toast.makeText(this, "Numéro requis", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                SharedPreferences prefs = getSharedPreferences(PREFS_CONTACTS, MODE_PRIVATE);
+                Gson gson = new Gson();
+                List<ContactConfig> liste = new ArrayList<>();
+                String json = prefs.getString("liste", "[]");
+                try {
+                    Type type = new TypeToken<List<ContactConfig>>(){}.getType();
+                    liste = gson.fromJson(json, type);
+                } catch (Exception e) {}
+                if (liste == null) liste = new ArrayList<>();
+
+                boolean existe = false;
+                for (ContactConfig c : liste) {
+                    if (c.numero.equals(num)) {
+                        c.nom = nom;
+                        c.intercepterSms = intercepter;
+                        c.estCache = cacher;
+                        existe = true;
+                        break;
+                    }
+                }
+                if (!existe) {
+                    ContactConfig nc = new ContactConfig();
+                    nc.nom = nom;
+                    nc.numero = num;
+                    nc.intercepterSms = intercepter;
+                    nc.estCache = cacher;
+                    liste.add(nc);
+                }
+                prefs.edit().putString("liste", gson.toJson(liste)).apply();
+                Toast.makeText(this, existe ? "Contact modifié ✅" : "Contact ajouté ✅", Toast.LENGTH_SHORT).show();
+                
+                // Ouvre directement la conversation avec ce contact
+                Intent intent = new Intent(MainActivity.this, ConversationActivity.class);
+                intent.putExtra("numero", num);
+                intent.putExtra("nom", nom);
+                startActivity(intent);
+            })
+            .setNegativeButton("Annuler", null)
+            .show();
     }
 
     @Override
