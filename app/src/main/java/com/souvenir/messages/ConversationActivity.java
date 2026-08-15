@@ -57,12 +57,14 @@ public class ConversationActivity extends Activity {
         if (TextUtils.isEmpty(nomConversation)) nomConversation = "Nouvelle conversation";
         setTitle(nomConversation);
 
-        if (!modeCache) {
-            chargerMessages();
-        }
-
+        // ✅ CRÉER L'ADAPTER D'ABORD — avant chargerMessages()
         adapter = new MessageAdapter();
         listView.setAdapter(adapter);
+
+        // ✅ Charger les messages SEULEMENT si pas en mode caché
+        if (!modeCache && !TextUtils.isEmpty(numero)) {
+            chargerMessages();
+        }
 
         btnEnvoyer.setOnClickListener(v -> {
             String texte = saisieMessage.getText().toString().trim();
@@ -73,6 +75,8 @@ public class ConversationActivity extends Activity {
     }
 
     private void chargerMessages() {
+        if (TextUtils.isEmpty(numero) || adapter == null) return;
+        
         SharedPreferences prefs = getSharedPreferences(PREFS_MESSAGES, MODE_PRIVATE);
         Gson gson = new Gson();
         String cle = "conv_" + numero;
@@ -80,12 +84,16 @@ public class ConversationActivity extends Activity {
         messages.clear();
         try {
             Type type = new TypeToken<List<Message>>(){}.getType();
-            messages = gson.fromJson(json, type);
-        } catch (Exception e) {}
-        if (messages == null) messages = new ArrayList<>();
+            List<Message> liste = gson.fromJson(json, type);
+            if (liste != null) messages.addAll(liste);
+        } catch (Exception e) {
+            Log.e(TAG, "Erreur chargement messages: " + e.getMessage());
+        }
         marquerCommeLu();
         adapter.notifyDataSetChanged();
-        listView.setSelection(messages.size() - 1);
+        if (messages.size() > 0) {
+            listView.setSelection(messages.size() - 1);
+        }
     }
 
     private void marquerCommeLu() {
@@ -126,6 +134,8 @@ public class ConversationActivity extends Activity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_conversation, menu);
+        if (TextUtils.isEmpty(numero)) return true;
+        
         SharedPreferences prefs = getSharedPreferences(PREFS_CONTACTS, MODE_PRIVATE);
         Gson gson = new Gson();
         String json = prefs.getString("liste", "[]");
@@ -134,10 +144,12 @@ public class ConversationActivity extends Activity {
             Type type = new TypeToken<List<ContactConfig>>(){}.getType();
             contacts = gson.fromJson(json, type);
         } catch (Exception e) {}
-        for (ContactConfig c : contacts) {
-            if (c.numero.equals(numero)) {
-                menu.findItem(R.id.action_cacher).setChecked(c.estCache);
-                break;
+        if (contacts != null) {
+            for (ContactConfig c : contacts) {
+                if (c.numero.equals(numero)) {
+                    menu.findItem(R.id.action_cacher).setChecked(c.estCache);
+                    break;
+                }
             }
         }
         return true;
@@ -160,6 +172,7 @@ public class ConversationActivity extends Activity {
     }
 
     private void basculerModeCache(boolean estCache) {
+        if (TextUtils.isEmpty(numero)) return;
         SharedPreferences prefs = getSharedPreferences(PREFS_CONTACTS, MODE_PRIVATE);
         Gson gson = new Gson();
         List<ContactConfig> liste = new ArrayList<>();
