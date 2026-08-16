@@ -1,10 +1,21 @@
 package com.souvenir.messages;
-import com.google.gson.annotations.SerializedName;
-public class Message {
-    @SerializedName("texte") public String texte = "";
-    @SerializedName("horodatage") public long horodatage = 0;
-    @SerializedName("envoye") public boolean envoye = false;
-    @SerializedName("photoBase64") public String photoBase64 = null;
-    @SerializedName("audioBase64") public String audioBase64 = null;
-    @SerializedName("dureeMs") public long dureeMs = 0;
+
+import java.io.Serializable;
+
+public class Message implements Serializable {
+    public String texte;
+    public String audioBase64;
+    public String photoBase64;
+    public long dureeMs = 0;
+    public boolean envoye;
+    public long horodatage;
+
+    public Message() {}
+
+    public Message(String texte, String audioBase64, boolean envoye) {
+        this.texte = texte;
+        this.audioBase64 = audioBase64;
+        this.envoye = envoye;
+        this.horodatage = System.currentTimeMillis();
+    }
 }

@@ -1,11 +1,34 @@
 package com.souvenir.messages;
-import com.google.gson.annotations.SerializedName;
+
+import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DiffUtil;
-public class ContactConfig {
-    @SerializedName("nom") public String nom = "";
-    @SerializedName("numero") public String numero = "";
-    public static final DiffUtil.ItemCallback<ContactConfig> DIFF_CALLBACK = new DiffUtil.ItemCallback<ContactConfig>() {
-        @Override public boolean areItemsTheSame(ContactConfig a, ContactConfig b) { return a.numero.equals(b.numero); }
-        @Override public boolean areContentsTheSame(ContactConfig a, ContactConfig b) { return a.nom.equals(b.nom); }
-    };
+import java.io.Serializable;
+
+public class ContactConfig implements Serializable {
+    public String nom;
+    public String numero;
+    public boolean intercepterSms = false;
+    public boolean estCache = false;
+    public String titreNotif;
+    public String texteNotif;
+
+    public static final DiffUtil.ItemCallback<ContactConfig> DIFF_CALLBACK =
+            new DiffUtil.ItemCallback<ContactConfig>() {
+                @Override
+                public boolean areItemsTheSame(@NonNull ContactConfig oldItem, @NonNull ContactConfig newItem) {
+                    return oldItem.numero.equals(newItem.numero);
+                }
+                @Override
+                public boolean areContentsTheSame(@NonNull ContactConfig oldItem, @NonNull ContactConfig newItem) {
+                    return oldItem.nom.equals(newItem.nom) && 
+                           oldItem.numero.equals(newItem.numero) &&
+                           oldItem.intercepterSms == newItem.intercepterSms &&
+                           oldItem.estCache == newItem.estCache &&
+                           egal(oldItem.titreNotif, newItem.titreNotif) &&
+                           egal(oldItem.texteNotif, newItem.texteNotif);
+                }
+                private boolean egal(String a, String b) {
+                    return a == null ? b == null : a.equals(b);
+                }
+            };
 }
