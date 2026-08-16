@@ -91,12 +91,12 @@ public class MainActivity extends AppCompatActivity {
             tab.setText(pos == 0 ? "📇 Contacts" : "💬 Conversations");
         }).attach();
 
-        adapterContacts = new ContactAdapter(listeContacts);
-        adapterConversations = new ConversationAdapter(listeConversations);
-
-        findViewById(R.id.btn_ajouter).setOnClickListener(v -> ajouterContact());
+        adapterContacts = new ContactAdapter();
+        adapterConversations = new ConversationAdapter();
 
         mettreAJourAffichage();
+
+        findViewById(R.id.btn_ajouter).setOnClickListener(v -> ajouterContact());
     }
 
     private void ajouterContact() {
@@ -115,50 +115,29 @@ public class MainActivity extends AppCompatActivity {
         listeContacts.add(nc);
 
         sauvegarderContacts();
-        
-        // ✅ ÉTAPES 1-5 : Rafraîchir complètement
         mettreAJourAffichage();
         etNom.setText("");
         etNumero.setText("");
     }
 
-    // 🔄 ÉTAPES 1 à 5 — Rafraîchissement complet
     public void mettreAJourAffichage() {
-        // Étape 1 : Recharger depuis le stockage
         chargerDonnees();
         
-        // Étape 2 : Notifier l'adapter du changement
         if (adapterContacts != null) {
             adapterContacts.submitList(new ArrayList<>(listeContacts));
-            adapterContacts.notifyDataSetChanged();
         }
-        
-        // Étape 3 : Afficher/masquer le message "Aucun contact"
-        if (listeVide != null) {
-            listeVide.setVisibility(listeContacts.isEmpty() ? View.VISIBLE : View.GONE);
-        }
-        
-        // Étape 4 : Rafraîchir aussi les conversations
         if (adapterConversations != null) {
             adapterConversations.submitList(new ArrayList<>(listeConversations));
-            adapterConversations.notifyDataSetChanged();
         }
         
-        // Étape 5 : Forcer le rafraîchissement visuel
-        if (adapterContacts != null && adapterContacts.getItemCount() > 0) {
-            adapterContacts.notifyItemRangeChanged(0, listeContacts.size());
+        if (listeVide != null) {
+            listeVide.setVisibility(listeContacts.isEmpty() ? View.VISIBLE : View.GONE);
         }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        mettreAJourAffichage(); // Rafraîchir quand on revient sur l'app
-    }
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        mettreAJourAffichage(); // Rafraîchir après retour d'une conversation
+        mettreAJourAffichage();
     }
 }
