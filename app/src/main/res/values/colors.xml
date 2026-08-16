@@ -1,10 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="primary">#6366F1</color>
+    <color name="primary_dark">#4F46E5</color>
+    <color name="secondary">#EC4899</color>
+    <color name="tertiary">#10B981</color>
     <color name="surface">#FAFAFA</color>
     <color name="surface_card">#FFFFFF</color>
+    <color name="surface_variant">#F3F4F6</color>
     <color name="text_primary">#1F2937</color>
     <color name="text_secondary">#6B7280</color>
-    <color name="white">#FFFFFF</color>
+    <color name="bubble_sent">#6366F1</color>
+    <color name="bubble_received">#FFFFFF</color>
     <color name="divider">#E5E7EB</color>
+    <color name="white">#FFFFFF</color>
+    <color name="red_dark">#DC2626</color>
 </resources>

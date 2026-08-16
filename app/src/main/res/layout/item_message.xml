@@ -9,7 +9,7 @@
         android:id="@+id/msg_bulle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:maxWidth="75%"
+        android:maxWidth="500dp"
         android:orientation="vertical"
         android:padding="12dp"
         android:layout_gravity="start">
