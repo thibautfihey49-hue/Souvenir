@@ -8,21 +8,19 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.media.MediaPlayer;
+import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextUtils;
-import android.text.TextWatcher;
 import android.util.Base64;
-import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.BaseAdapter;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.GridView;
 import android.widget.ImageButton;
@@ -34,10 +32,12 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
@@ -47,11 +47,10 @@ import java.util.List;
 import java.util.Locale;
 
 public class ConversationActivity extends AppCompatActivity {
-    private static final String TAG = "CONV";
     private static final String PREFS_CONVERSATIONS = "Conversations";
-    private static final int PERMISSION_MMS = 2001;
     private static final int PERMISSION_CAMERA = 2002;
     private static final int PERMISSION_STORAGE = 2003;
+    private static final int PERMISSION_AUDIO = 2004;
     private static final int CHOISIR_PHOTO = 3001;
     private static final int PRENDRE_PHOTO = 3002;
 
@@ -59,27 +58,26 @@ public class ConversationActivity extends AppCompatActivity {
     private MessageAdapter adapter;
     private List<Message> messages = new ArrayList<>();
     private EditText champMessage;
-    private ImageButton btnEnvoyer, btnPhoto, btnEmoji, btnAppel, btnVisio;
-    private LinearLayout clavierEmojis;
-    private TextView titreNom;
+    private ImageButton btnEnvoyer, btnPhoto, btnEmoji, btnAppel, btnVisio, btnEnregistrerVocal;
+    private LinearLayout clavierEmojis, zoneEnregistrement;
+    private TextView titreNom, chronoEnregistrement;
+    private View boutonStopEnregistrement;
+    
+    private MediaRecorder mediaRecorder;
+    private File fichierAudioTemp;
+    private long debutEnregistrement = 0;
+    private Handler handlerChrono = new Handler(Looper.getMainLooper());
+    private boolean estEnregistrementEnCours = false;
+    private MediaPlayer lecteurAudio = null;
+
     private String numero, nom;
-    private boolean modeCache = false;
     private Bitmap photoSelectionnee;
 
     private static final String[] EMOJIS = {
         "😀", "😃", "😄", "😁", "😆", "😅", "🤣", "😂",
         "🙂", "🙃", "😉", "😊", "😇", "🥰", "😍", "🤩",
-        "😘", "😗", "😚", "😙", "🥲", "😋", "😛", "😜",
-        "🤪", "😝", "🤑", "🤗", "🤭", "🤫", "🤔", "🤐",
-        "😐", "😑", "😶", "😏", "😒", "🙄", "😬", "🤥",
-        "😌", "😔", "😪", "🤤", "😴", "😷", "🤒", "🤕",
-        "🤢", "🤮", "🤧", "🥵", "🥶", "🥴", "😵", "🤯",
-        "👍", "👎", "👏", "🙌", "👐", "🤲", "🤝", "🙏",
         "❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍",
-        "🔥", "⭐", "✨", "💯", "✅", "❌", "⚠️", "❓",
-        "☀️", "🌙", "🌈", "🌧️", "❄️", "⚡", "🍀", "🌸",
-        "🎂", "🎁", "🎈", "🎉", "🎊", "🏠", "🚗", "✈️",
-        "📞", "📱", "💬", "📷", "🎵", "🎬", "📚", "💻"
+        "👍", "👎", "👏", "🙌", "🤲", "🤝", "🙏", "🔥"
     };
 
     @Override
@@ -89,8 +87,6 @@ public class ConversationActivity extends AppCompatActivity {
 
         numero = getIntent().getStringExtra("numero");
         nom = getIntent().getStringExtra("nom");
-        modeCache = getIntent().getBooleanExtra("mode_cache", false);
-
         if (numero == null) numero = "";
         if (nom == null || nom.isEmpty()) nom = numero;
 
@@ -104,7 +100,11 @@ public class ConversationActivity extends AppCompatActivity {
         btnEmoji = findViewById(R.id.btn_emoji);
         btnAppel = findViewById(R.id.btn_appel);
         btnVisio = findViewById(R.id.btn_visio);
+        btnEnregistrerVocal = findViewById(R.id.btn_vocal);
         clavierEmojis = findViewById(R.id.clavier_emojis);
+        zoneEnregistrement = findViewById(R.id.zone_enregistrement);
+        chronoEnregistrement = findViewById(R.id.chrono_enregistrement);
+        boutonStopEnregistrement = findViewById(R.id.btn_stop_enregistrement);
 
         chargerMessages();
         adapter = new MessageAdapter();
@@ -114,57 +114,153 @@ public class ConversationActivity extends AppCompatActivity {
         btnEnvoyer.setOnClickListener(v -> envoyerMessage());
         btnPhoto.setOnClickListener(v -> choisirSourcePhoto());
         btnEmoji.setOnClickListener(v -> {
-            if (clavierEmojis.getVisibility() == View.VISIBLE) {
-                clavierEmojis.setVisibility(View.GONE);
-            } else {
-                clavierEmojis.setVisibility(View.VISIBLE);
-                chargerEmojis();
-            }
+            clavierEmojis.setVisibility(clavierEmojis.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
+            zoneEnregistrement.setVisibility(View.GONE);
+            chargerEmojis();
         });
         btnAppel.setOnClickListener(v -> lancerAppelVocal());
         btnVisio.setOnClickListener(v -> lancerAppelVisio());
+        btnEnregistrerVocal.setOnClickListener(v -> demanderPermissionEtEnregistrer());
+        boutonStopEnregistrement.setOnClickListener(v -> arreterEnregistrementEtEnvoyer());
 
         demanderPermissions();
+    }
+
+    private void demanderPermissionEtEnregistrer() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            commencerEnregistrement();
+        } else {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, PERMISSION_AUDIO);
+        }
+    }
+
+    private void commencerEnregistrement() {
+        try {
+            fichierAudioTemp = new File(getExternalCacheDir(), "msg_vocal_" + System.currentTimeMillis() + ".3gp");
+            mediaRecorder = new MediaRecorder();
+            mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+            mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+            mediaRecorder.setOutputFile(fichierAudioTemp.getAbsolutePath());
+            mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+            mediaRecorder.prepare();
+            mediaRecorder.start();
+
+            estEnregistrementEnCours = true;
+            debutEnregistrement = System.currentTimeMillis();
+            
+            zoneEnregistrement.setVisibility(View.VISIBLE);
+            clavierEmojis.setVisibility(View.GONE);
+            champMessage.setVisibility(View.GONE);
+            btnEnvoyer.setVisibility(View.GONE);
+            
+            handlerChrono.postDelayed(new Runnable() {
+                @Override public void run() {
+                    if (!estEnregistrementEnCours) return;
+                    long sec = (System.currentTimeMillis() - debutEnregistrement) / 1000;
+                    chronoEnregistrement.setText(String.format(Locale.FRANCE, "⏱️ %02d:%02d", sec / 60, sec % 60));
+                    handlerChrono.postDelayed(this, 500);
+                }
+            }, 0);
+
+            Toast.makeText(this, "🎤 Enregistrement...", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Erreur enregistrement : " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void arreterEnregistrementEtEnvoyer() {
+        if (!estEnregistrementEnCours || mediaRecorder == null) return;
+        
+        try { mediaRecorder.stop(); mediaRecorder.release(); } catch (Exception ignored) {}
+        mediaRecorder = null;
+        estEnregistrementEnCours = false;
+        handlerChrono.removeCallbacksAndMessages(null);
+
+        long duree = System.currentTimeMillis() - debutEnregistrement;
+
+        zoneEnregistrement.setVisibility(View.GONE);
+        champMessage.setVisibility(View.VISIBLE);
+        btnEnvoyer.setVisibility(View.VISIBLE);
+
+        String audioB64 = fichierVersBase64(fichierAudioTemp);
+        if (audioB64 == null) {
+            Toast.makeText(this, "Erreur préparation audio", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Message msg = new Message();
+        msg.texte = "🎤 Message vocal";
+        msg.audioBase64 = audioB64;
+        msg.dureeMs = duree;
+        msg.envoye = true;
+        msg.horodatage = System.currentTimeMillis();
+        messages.add(msg);
+
+        sauvegarderMessages();
+        adapter.notifyDataSetChanged();
+        defilerEnBas();
+
+        try { fichierAudioTemp.delete(); } catch (Exception ignored) {}
+        Toast.makeText(this, "✅ Message vocal envoyé", Toast.LENGTH_SHORT).show();
+    }
+
+    private String fichierVersBase64(File fichier) {
+        try {
+            FileInputStream fis = new FileInputStream(fichier);
+            byte[] data = new byte[(int) fichier.length()];
+            fis.read(data);
+            fis.close();
+            return Base64.encodeToString(data, Base64.NO_WRAP);
+        } catch (Exception e) { return null; }
+    }
+
+    private void lireMessageVocal(String base64Audio) {
+        if (lecteurAudio != null) { lecteurAudio.release(); lecteurAudio = null; }
+        try {
+            byte[] data = Base64.decode(base64Audio, Base64.NO_WRAP);
+            File temp = File.createTempFile("lecture_", ".3gp", getExternalCacheDir());
+            FileOutputStream fos = new FileOutputStream(temp);
+            fos.write(data);
+            fos.close();
+
+            lecteurAudio = new MediaPlayer();
+            lecteurAudio.setDataSource(temp.getAbsolutePath());
+            lecteurAudio.prepare();
+            lecteurAudio.start();
+            lecteurAudio.setOnCompletionListener(mp -> {
+                mp.release();
+                temp.delete();
+                lecteurAudio = null;
+            });
+            Toast.makeText(this, "▶️ Lecture...", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Erreur lecture : " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void choisirSourcePhoto() {
         String[] options = {"📷 Prendre une photo", "🖼️ Choisir dans la galerie"};
         new AlertDialog.Builder(this)
-            .setTitle("Joindre une photo")
+            .setTitle("Joindre une photo pour MMS")
             .setItems(options, (d, which) -> {
                 if (which == 0) {
-                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-                            == PackageManager.PERMISSION_GRANTED) {
-                        prendrePhoto();
-                    } else {
-                        ActivityCompat.requestPermissions(this,
-                                new String[]{Manifest.permission.CAMERA}, PERMISSION_CAMERA);
-                    }
+                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) prendrePhoto();
+                    else ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, PERMISSION_CAMERA);
                 } else {
-                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
-                            == PackageManager.PERMISSION_GRANTED ||
-                        ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                            == PackageManager.PERMISSION_GRANTED) {
-                        choisirPhotoGalerie();
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED) choisirPhotoGalerie();
+                        else ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_MEDIA_IMAGES}, PERMISSION_STORAGE);
                     } else {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            ActivityCompat.requestPermissions(this,
-                                    new String[]{Manifest.permission.READ_MEDIA_IMAGES}, PERMISSION_STORAGE);
-                        } else {
-                            ActivityCompat.requestPermissions(this,
-                                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, PERMISSION_STORAGE);
-                        }
+                        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) choisirPhotoGalerie();
+                        else ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, PERMISSION_STORAGE);
                     }
                 }
-            })
-            .show();
+            }).show();
     }
 
     private void prendrePhoto() {
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        if (intent.resolveActivity(getPackageManager()) != null) {
-            startActivityForResult(intent, PRENDRE_PHOTO);
-        }
+        if (intent.resolveActivity(getPackageManager()) != null) startActivityForResult(intent, PRENDRE_PHOTO);
     }
 
     private void choisirPhotoGalerie() {
@@ -181,17 +277,10 @@ public class ConversationActivity extends AppCompatActivity {
             if (requestCode == PRENDRE_PHOTO && data != null && data.getExtras() != null) {
                 bitmap = (Bitmap) data.getExtras().get("data");
             } else if (requestCode == CHOISIR_PHOTO && data != null && data.getData() != null) {
-                try {
-                    bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), data.getData());
-                } catch (Exception e) {
-                    Toast.makeText(this, "Erreur chargement photo", Toast.LENGTH_SHORT).show();
-                    return;
-                }
+                try { bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), data.getData()); }
+                catch (Exception e) { Toast.makeText(this, "Erreur chargement photo", Toast.LENGTH_SHORT).show(); return; }
             }
-            if (bitmap != null) {
-                photoSelectionnee = reduireImage(bitmap);
-                afficherApercuPhoto();
-            }
+            if (bitmap != null) { photoSelectionnee = reduireImage(bitmap); afficherApercuPhoto(); }
         }
     }
 
@@ -209,11 +298,9 @@ public class ConversationActivity extends AppCompatActivity {
 
     private void afficherApercuPhoto() {
         View apercu = getLayoutInflater().inflate(R.layout.apercu_photo, null);
-        ImageView iv = apercu.findViewById(R.id.apercu_image);
-        iv.setImageBitmap(photoSelectionnee);
-
+        ((ImageView) apercu.findViewById(R.id.apercu_image)).setImageBitmap(photoSelectionnee);
         new AlertDialog.Builder(this)
-            .setTitle("Envoyer cette photo ?")
+            .setTitle("Envoyer cette photo par MMS ?")
             .setView(apercu)
             .setPositiveButton("📤 Envoyer MMS", (d, w) -> envoyerMMS())
             .setNegativeButton("Annuler", null)
@@ -222,13 +309,13 @@ public class ConversationActivity extends AppCompatActivity {
 
     private void envoyerMMS() {
         try {
-            File fichierImg = new File(getExternalCacheDir(), "mms_photo.jpg");
-            FileOutputStream fos = new FileOutputStream(fichierImg);
+            File fichier = new File(getExternalCacheDir(), "mms_photo_" + System.currentTimeMillis() + ".jpg");
+            FileOutputStream fos = new FileOutputStream(fichier);
             photoSelectionnee.compress(Bitmap.CompressFormat.JPEG, 70, fos);
             fos.flush();
             fos.close();
 
-            Uri uri = Uri.fromFile(fichierImg);
+            Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", fichier);
             Intent intent = new Intent(Intent.ACTION_SEND);
             intent.putExtra("address", numero);
             intent.putExtra("sms_body", "[Photo]");
@@ -237,7 +324,6 @@ public class ConversationActivity extends AppCompatActivity {
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             startActivity(Intent.createChooser(intent, "Envoyer MMS avec"));
 
-            // ✅ Utilisation du constructeur sans paramètres
             Message msg = new Message();
             msg.texte = "📷 [Photo envoyée par MMS]";
             msg.envoye = true;
@@ -248,9 +334,8 @@ public class ConversationActivity extends AppCompatActivity {
             adapter.notifyDataSetChanged();
             defilerEnBas();
             photoSelectionnee = null;
-
         } catch (Exception e) {
-            Toast.makeText(this, "Erreur envoi MMS", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Erreur envoi MMS: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -263,13 +348,8 @@ public class ConversationActivity extends AppCompatActivity {
     private void envoyerMessage() {
         String texte = champMessage.getText().toString().trim();
         if (TextUtils.isEmpty(texte) && photoSelectionnee == null) return;
+        if (photoSelectionnee != null) { envoyerMMS(); return; }
 
-        if (photoSelectionnee != null) {
-            envoyerMMS();
-            return;
-        }
-
-        // ✅ Utilisation du constructeur sans paramètres
         Message msg = new Message();
         msg.texte = texte;
         msg.envoye = true;
@@ -279,7 +359,7 @@ public class ConversationActivity extends AppCompatActivity {
         try {
             android.telephony.SmsManager.getDefault().sendTextMessage(numero, null, texte, null, null);
         } catch (Exception e) {
-            Toast.makeText(this, "SMS envoyé", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "SMS enregistré", Toast.LENGTH_SHORT).show();
         }
 
         champMessage.setText("");
@@ -289,60 +369,54 @@ public class ConversationActivity extends AppCompatActivity {
     }
 
     private void lancerAppelVocal() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE)
-                == PackageManager.PERMISSION_GRANTED) {
-            Intent intent = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + numero));
-            startActivity(intent);
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
+            startActivity(new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + numero)));
         } else {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CALL_PHONE}, 101);
         }
     }
 
     private void lancerAppelVisio() {
-        String[] options = {"📞 Google Duo / Meet", "📹 WhatsApp", "🎨 Signal", "🌐 Autre..."};
+        String[] options = {"📞 Google Meet", "📹 WhatsApp", "🎨 Signal", "🌐 Autre"};
         new AlertDialog.Builder(this)
-            .setTitle("Appel Visio")
-            .setMessage("Choisissez une application pour l'appel vidéo")
+            .setTitle("Appel Vidéo")
             .setItems(options, (d, which) -> {
                 try {
                     Intent intent = null;
-                    if (which == 0) {
-                        intent = new Intent(Intent.ACTION_VIEW, Uri.parse("duo://call/" + numero));
-                        if (getPackageManager().resolveActivity(intent, 0) == null) {
-                            intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://meet.google.com/"));
-                        }
-                    } else if (which == 1) {
-                        String num = numero.replaceAll("^0", "+33").replaceAll("\\s+", "");
-                        intent = new Intent(Intent.ACTION_VIEW, Uri.parse("whatsapp://send?phone=" + num));
-                    } else if (which == 2) {
-                        intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://signal.app/send/" + numero));
-                    } else {
-                        intent = new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + numero));
-                    }
+                    if (which == 0) intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://meet.google.com/"));
+                    else if (which == 1) intent = new Intent(Intent.ACTION_VIEW, Uri.parse("whatsapp://send?phone=" + numero.replaceAll("^0", "+33").replaceAll("\\s+", "")));
+                    else if (which == 2) intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://signal.app/send/" + numero));
+                    else intent = new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + numero));
                     startActivity(intent);
-                } catch (Exception e) {
-                    Toast.makeText(this, "Application non disponible", Toast.LENGTH_SHORT).show();
-                }
-            })
-            .show();
+                } catch (Exception e) { Toast.makeText(this, "Application indisponible", Toast.LENGTH_SHORT).show(); }
+            }).show();
     }
 
     private void chargerEmojis() {
         GridView grid = clavierEmojis.findViewById(R.id.grid_emojis);
-        EmojiAdapter adapter = new EmojiAdapter();
-        grid.setAdapter(adapter);
-        grid.setOnItemClickListener((parent, v, pos, id) -> {
-            champMessage.getText().insert(champMessage.getSelectionStart(), EMOJIS[pos]);
+        grid.setAdapter(new android.widget.BaseAdapter() {
+            @Override public int getCount() { return EMOJIS.length; }
+            @Override public Object getItem(int p) { return EMOJIS[p]; }
+            @Override public long getItemId(int p) { return p; }
+            @Override public View getView(int p, View v, ViewGroup parent) {
+                TextView tv = new TextView(ConversationActivity.this);
+                tv.setText(EMOJIS[p]);
+                tv.setTextSize(24);
+                tv.setGravity(android.view.Gravity.CENTER);
+                tv.setPadding(12, 12, 12, 12);
+                tv.setBackgroundResource(android.R.drawable.list_selector_background);
+                tv.setOnClickListener(c -> champMessage.getText().insert(champMessage.getSelectionStart(), EMOJIS[p]));
+                return tv;
+            }
         });
     }
 
     private void chargerMessages() {
         SharedPreferences prefs = getSharedPreferences(PREFS_CONVERSATIONS, MODE_PRIVATE);
         Gson gson = new Gson();
-        String json = prefs.getString(numero, "[]");
         try {
             Type type = new TypeToken<List<Message>>(){}.getType();
-            messages = gson.fromJson(json, type);
+            messages = gson.fromJson(prefs.getString(numero, "[]"), type);
         } catch (Exception e) { messages = new ArrayList<>(); }
         if (messages == null) messages = new ArrayList<>();
     }
@@ -359,35 +433,22 @@ public class ConversationActivity extends AppCompatActivity {
 
     private void demanderPermissions() {
         List<String> perms = new ArrayList<>();
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS)
-                != PackageManager.PERMISSION_GRANTED) perms.add(Manifest.permission.SEND_SMS);
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS)
-                != PackageManager.PERMISSION_GRANTED) perms.add(Manifest.permission.READ_SMS);
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS)
-                != PackageManager.PERMISSION_GRANTED) perms.add(Manifest.permission.RECEIVE_SMS);
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE)
-                != PackageManager.PERMISSION_GRANTED) perms.add(Manifest.permission.CALL_PHONE);
-        if (!perms.isEmpty()) {
-            ActivityCompat.requestPermissions(this, perms.toArray(new String[0]), 1001);
-        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) perms.add(Manifest.permission.SEND_SMS);
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS) != PackageManager.PERMISSION_GRANTED) perms.add(Manifest.permission.READ_SMS);
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED) perms.add(Manifest.permission.RECEIVE_SMS);
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) perms.add(Manifest.permission.CALL_PHONE);
+        if (!perms.isEmpty()) ActivityCompat.requestPermissions(this, perms.toArray(new String[0]), 1001);
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_conversation, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == android.R.id.home) {
-            finish();
-            return true;
+    public void onRequestPermissionsResult(int code, String[] perms, int[] resultat) {
+        super.onRequestPermissionsResult(code, perms, resultat);
+        if (code == PERMISSION_AUDIO && resultat.length > 0 && resultat[0] == PackageManager.PERMISSION_GRANTED) {
+            commencerEnregistrement();
         }
-        return super.onOptionsItemSelected(item);
     }
 
-    private class MessageAdapter extends BaseAdapter {
+    private class MessageAdapter extends android.widget.BaseAdapter {
         @Override public int getCount() { return messages.size(); }
         @Override public Object getItem(int p) { return messages.get(p); }
         @Override public long getItemId(int p) { return p; }
@@ -397,15 +458,14 @@ public class ConversationActivity extends AppCompatActivity {
             Message m = messages.get(p);
             if (v == null) v = getLayoutInflater().inflate(R.layout.item_message, parent, false);
 
-            // ✅ Utilisation des bons IDs du layout
             TextView tvTexte = v.findViewById(R.id.msg_texte);
             TextView tvHeure = v.findViewById(R.id.msg_heure);
+            TextView tvDuree = v.findViewById(R.id.msg_duree_vocal);
             LinearLayout bulle = v.findViewById(R.id.msg_bulle);
             ImageView ivPhoto = v.findViewById(R.id.msg_photo);
+            ImageView btnLireVocal = v.findViewById(R.id.btn_lire_vocal);
 
-            tvTexte.setText(m.texte);
-            SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.FRANCE);
-            tvHeure.setText(sdf.format(new Date(m.horodatage)));
+            tvHeure.setText(new SimpleDateFormat("HH:mm", Locale.FRANCE).format(new Date(m.horodatage)));
 
             if (m.envoye) {
                 bulle.setBackgroundResource(R.drawable.bulle_envoyee);
@@ -414,43 +474,34 @@ public class ConversationActivity extends AppCompatActivity {
             } else {
                 bulle.setBackgroundResource(R.drawable.bulle_recue);
                 ((LinearLayout.LayoutParams) bulle.getLayoutParams()).gravity = android.view.Gravity.START;
-                tvTexte.setTextColor(0xFF000000);
+                tvTexte.setTextColor(0xFF1F2937);
             }
 
-            if (m.photoBase64 != null && !m.photoBase64.isEmpty()) {
+            if (m.audioBase64 != null && !m.audioBase64.isEmpty()) {
+                tvTexte.setVisibility(View.GONE);
+                ivPhoto.setVisibility(View.GONE);
+                btnLireVocal.setVisibility(View.VISIBLE);
+                tvDuree.setVisibility(View.VISIBLE);
+                long sec = m.dureeMs / 1000;
+                tvDuree.setText(String.format(Locale.FRANCE, "%d:%02d", sec / 60, sec % 60));
+                btnLireVocal.setOnClickListener(c -> lireMessageVocal(m.audioBase64));
+            } else if (m.photoBase64 != null && !m.photoBase64.isEmpty()) {
                 try {
                     byte[] bytes = Base64.decode(m.photoBase64, Base64.NO_WRAP);
-                    Bitmap bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-                    ivPhoto.setImageBitmap(bmp);
+                    ivPhoto.setImageBitmap(BitmapFactory.decodeByteArray(bytes, 0, bytes.length));
                     ivPhoto.setVisibility(View.VISIBLE);
                     tvTexte.setVisibility(View.GONE);
-                } catch (Exception e) {
-                    ivPhoto.setVisibility(View.GONE);
-                    tvTexte.setVisibility(View.VISIBLE);
-                }
+                    btnLireVocal.setVisibility(View.GONE);
+                    tvDuree.setVisibility(View.GONE);
+                } catch (Exception e) { /* ignoré */ }
             } else {
-                ivPhoto.setVisibility(View.GONE);
+                tvTexte.setText(m.texte);
                 tvTexte.setVisibility(View.VISIBLE);
+                ivPhoto.setVisibility(View.GONE);
+                btnLireVocal.setVisibility(View.GONE);
+                tvDuree.setVisibility(View.GONE);
             }
-
             return v;
-        }
-    }
-
-    private class EmojiAdapter extends BaseAdapter {
-        @Override public int getCount() { return EMOJIS.length; }
-        @Override public Object getItem(int p) { return EMOJIS[p]; }
-        @Override public long getItemId(int p) { return p; }
-
-        @Override
-        public View getView(int p, View v, ViewGroup parent) {
-            TextView tv = new TextView(ConversationActivity.this);
-            tv.setText(EMOJIS[p]);
-            tv.setTextSize(24);
-            tv.setGravity(android.view.Gravity.CENTER);
-            tv.setPadding(8, 8, 8, 8);
-            tv.setBackgroundResource(android.R.drawable.list_selector_background);
-            return tv;
         }
     }
 }

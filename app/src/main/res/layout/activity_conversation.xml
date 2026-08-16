@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#FAFAFA">
+    android:background="@color/surface">
 
     <!-- En-tête -->
     <LinearLayout
@@ -11,44 +11,38 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="12dp"
-        android:background="#FFFFFF"
+        android:background="@color/surface_card"
         android:elevation="2dp"
         android:gravity="center_vertical">
-
-        <ImageButton
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:src="@android:drawable/ic_menu_revert"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:onClick="finish"
-            android:contentDescription="Retour"/>
 
         <TextView
             android:id="@+id/titre_contact"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:text="Contact"
             android:textSize="18sp"
             android:textStyle="bold"
-            android:paddingStart="8dp"
-            android:textColor="#202124"/>
+            android:textColor="@color/text_primary"/>
 
-        <!-- 📞 Appel vocal -->
         <ImageButton
             android:id="@+id/btn_appel"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:src="@android:drawable/ic_menu_call"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Appel vocal"/>
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/btn_cercle"
+            android:src="@drawable/ic_call"
+            android:tint="@color/primary"
+            android:contentDescription="Appel"/>
 
-        <!-- 📹 Appel visio -->
         <ImageButton
             android:id="@+id/btn_visio"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:src="@android:drawable/ic_menu_camera"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/btn_cercle"
+            android:src="@drawable/ic_video"
+            android:tint="@color/primary"
             android:contentDescription="Appel vidéo"/>
     </LinearLayout>
 
@@ -58,91 +52,122 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:padding="8dp"
-        android:divider="@null"
-        android:stackFromBottom="true"
-        android:transcriptMode="alwaysScroll"/>
+        android:padding="12dp"
+        android:divider="@android:color/transparent"
+        android:dividerHeight="8dp"
+        android:background="@color/surface"/>
 
-    <!-- 😀 Clavier émoticônes -->
+    <!-- Zone Enregistrement Vocal -->
+    <LinearLayout
+        android:id="@+id/zone_enregistrement"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:background="#FFF3CD"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="🎤 Enregistrement en cours..."
+            android:textSize="15sp"
+            android:textColor="#856404"/>
+
+        <TextView
+            android:id="@+id/chrono_enregistrement"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="00:00"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#856404"
+            android:layout_marginHorizontal="12dp"/>
+
+        <ImageButton
+            android:id="@+id/btn_stop_enregistrement"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/btn_cercle_rouge"
+            android:src="@drawable/ic_stop"
+            android:tint="#FFFFFF"
+            android:contentDescription="Arrêter et envoyer"/>
+    </LinearLayout>
+
+    <!-- Clavier Emojis -->
     <LinearLayout
         android:id="@+id/clavier_emojis"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#FFFFFF"
-        android:visibility="gone"
-        android:padding="8dp">
-
+        android:padding="8dp"
+        android:background="@color/surface_card"
+        android:visibility="gone">
         <GridView
             android:id="@+id/grid_emojis"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:numColumns="8"
-            android:horizontalSpacing="4dp"
-            android:verticalSpacing="4dp"/>
+            android:numColumns="8"/>
     </LinearLayout>
 
-    <!-- 📷 Aperçu photo avant envoi -->
-    <LinearLayout
-        android:id="@+id/apercu_photo_zone"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="8dp"
-        android:background="#F5F5F5"
-        android:visibility="gone">
-    </LinearLayout>
-
-    <!-- Barre de saisie -->
+    <!-- Zone de saisie -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="8dp"
-        android:background="#FFFFFF"
+        android:padding="12dp"
+        android:background="@color/surface_card"
         android:gravity="center_vertical">
 
-        <!-- 😀 Bouton émojis -->
         <ImageButton
-            android:id="@+id/btn_emoji"
+            android:id="@+id/btn_vocal"
             android:layout_width="44dp"
             android:layout_height="44dp"
-            android:src="@android:drawable/ic_menu_gallery"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Émoticônes"/>
+            android:background="@drawable/btn_cercle"
+            android:src="@drawable/ic_mic"
+            android:tint="@color/primary"
+            android:contentDescription="Message vocal"/>
 
-        <!-- 📷 Bouton photo/MMS -->
         <ImageButton
             android:id="@+id/btn_photo"
             android:layout_width="44dp"
             android:layout_height="44dp"
-            android:src="@android:drawable/ic_menu_camera"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Joindre une photo"/>
+            android:layout_marginStart="4dp"
+            android:background="@drawable/btn_cercle"
+            android:src="@drawable/ic_image"
+            android:tint="@color/primary"
+            android:contentDescription="Photo/MMS"/>
 
-        <!-- Champ message -->
+        <ImageButton
+            android:id="@+id/btn_emoji"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/btn_cercle"
+            android:src="@drawable/ic_emoji"
+            android:tint="@color/primary"
+            android:contentDescription="Emojis"/>
+
         <EditText
             android:id="@+id/champ_message"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="Écrivez votre message..."
-            android:inputType="textMultiLine|textCapSentences"
-            android:minHeight="44dp"
-            android:maxLines="4"
-            android:padding="12dp"
+            android:layout_marginHorizontal="10dp"
+            android:hint="Écrire un message..."
             android:background="@drawable/saisie_fond"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"/>
+            android:padding="12dp"
+            android:inputType="textMultiLine"
+            android:maxLines="4"/>
 
-        <!-- ➤ Envoyer -->
         <ImageButton
             android:id="@+id/btn_envoyer"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:src="@android:drawable/ic_menu_send"
-            android:background="@drawable/fab_background"
+            android:background="@drawable/btn_cercle_primary"
+            android:src="@drawable/ic_send_white"
             android:tint="#FFFFFF"
             android:contentDescription="Envoyer"/>
     </LinearLayout>
-
 </LinearLayout>

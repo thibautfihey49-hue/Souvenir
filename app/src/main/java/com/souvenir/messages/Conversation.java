@@ -1,19 +1,13 @@
 package com.souvenir.messages;
+import com.google.gson.annotations.SerializedName;
+import androidx.recyclerview.widget.DiffUtil;
 public class Conversation {
-    public String numero;
-    public String nom;
-    public String dernierMessage;
-    public long horodatage;
-    public int nonLu;
-    public boolean estCache;
-    public Boolean epingle;
-    public Conversation(String numero, String nom) {
-        this.numero = numero;
-        this.nom = nom;
-        this.dernierMessage = "";
-        this.horodatage = System.currentTimeMillis();
-        this.nonLu = 0;
-        this.estCache = false;
-        this.epingle = false;
-    }
+    @SerializedName("nom") public String nom = "";
+    @SerializedName("numero") public String numero = "";
+    @SerializedName("dernierMessage") public String dernierMessage = "";
+    @SerializedName("horodatage") public long horodatage = System.currentTimeMillis();
+    public static final DiffUtil.ItemCallback<Conversation> DIFF_CALLBACK = new DiffUtil.ItemCallback<Conversation>() {
+        @Override public boolean areItemsTheSame(Conversation a, Conversation b) { return a.numero.equals(b.numero); }
+        @Override public boolean areContentsTheSame(Conversation a, Conversation b) { return a.dernierMessage.equals(b.dernierMessage); }
+    };
 }

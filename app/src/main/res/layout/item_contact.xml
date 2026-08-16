@@ -26,37 +26,20 @@
         android:layout_weight="1"
         android:orientation="vertical">
 
-        <LinearLayout
+        <TextView
+            android:id="@+id/nom"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <TextView
-                android:id="@+id/nom"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textSize="16sp"
-                android:textStyle="medium"
-                android:textColor="@color/text_primary"/>
-
-            <TextView
-                android:id="@+id/heure"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="12sp"
-                android:textColor="@color/text_secondary"/>
-        </LinearLayout>
+            android:textSize="16sp"
+            android:textStyle="medium"
+            android:textColor="@color/text_primary"/>
 
         <TextView
-            android:id="@+id/dernier_message"
+            android:id="@+id/numero"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="13sp"
             android:textColor="@color/text_secondary"
-            android:layout_marginTop="4dp"
-            android:maxLines="1"
-            android:ellipsize="end"/>
+            android:layout_marginTop="2dp"/>
     </LinearLayout>
 </LinearLayout>

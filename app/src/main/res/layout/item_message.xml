@@ -9,10 +9,10 @@
         android:id="@+id/msg_bulle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_margin="4dp"
-        android:maxWidth="280dp"
+        android:maxWidth="75%"
         android:orientation="vertical"
-        android:padding="10dp">
+        android:padding="12dp"
+        android:layout_gravity="start">
 
         <TextView
             android:id="@+id/msg_texte"
@@ -23,22 +23,47 @@
 
         <ImageView
             android:id="@+id/msg_photo"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:maxWidth="240dp"
+            android:maxWidth="200dp"
             android:maxHeight="200dp"
-            android:adjustViewBounds="true"
-            android:scaleType="centerInside"
-            android:visibility="gone"
-            android:layout_marginTop="4dp"/>
+            android:layout_marginTop="4dp"
+            android:visibility="gone"/>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="4dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/btn_lire_vocal"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="@drawable/btn_cercle"
+                android:src="@drawable/ic_play"
+                android:tint="@color/primary"
+                android:visibility="gone"/>
+
+            <TextView
+                android:id="@+id/msg_duree_vocal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="@color/text_secondary"
+                android:layout_marginStart="8dp"
+                android:visibility="gone"/>
+        </LinearLayout>
 
         <TextView
             android:id="@+id/msg_heure"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="11sp"
-            android:textColor="#80868B"
-            android:layout_marginTop="4dp"/>
+            android:textColor="@color/text_secondary"
+            android:layout_marginTop="4dp"
+            android:layout_gravity="end"/>
     </LinearLayout>
-
 </LinearLayout>
